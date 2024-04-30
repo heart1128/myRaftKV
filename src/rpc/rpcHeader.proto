@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package RPC;
+
+// rpc的头格式定义，简单的三个参数
+message RpcHeader
+{
+    bytes service_name = 1;  // 服务名
+    bytes method_name = 2;   // 服务方法
+    uint32 args_size = 3;    
+}
+
+// 编译命令 protoc -I=. --cpp_out=. rpcHeader.proto
