@@ -7,5 +7,5 @@ aux_source_directory(${SRC_DIR} SRC_LIST)
 add_library(rpc_lib ${SRC_LIST} ${src_common})
 # 依赖的外部库
 target_link_libraries(rpc_lib boost_serialization)
-# 设置这个变量，最外层的makefile文件能用这个变量
+# 设置这个变量，最外层的CMakefile文件能用这个变量
 set(src_rpc ${SRC_LIST} CACHE INTERNAL "Description of the variable")

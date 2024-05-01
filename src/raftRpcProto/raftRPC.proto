@@ -1,0 +1,74 @@
+// 这个raftRPC文件定义了 选举时的rpc  心跳和同步的rpc，分别是不同的参数
+syntax = "proto3";
+
+package raftRpcProtocol;
+
+option cc_generic_services = true;  // 开启stub服务，客户端使用
+
+// 这些参数都是论文中定义好的
+
+// 1. 同步的日志实体
+message LogEntry{
+    bytes Command = 1;  // 客户端的命令 k v
+    int32 LogTerm = 2;  // 当前任期
+    int32 LogIndex = 3; // 日志序号
+}
+
+// 2. leader的心跳或者是日志同步实体
+message AppendEntriesArgs{
+    int32 Term = 1;             // 当前leader的任期，日志同步也有用，主要是看任期有没有自己大
+    int32 LeaderId = 2;         // 当前leader的id
+    int32 PrevLogIndex = 3;     // 上一次log的Index，主要看日志有没有自己新，或者拿来比较是不是最新的
+    int32 PrevLogTerm = 4;      // 上一次log的任期
+    repeated LogEntry Entries = 5; // 每次可以发送多个entry日志，不一定要一个一个发
+    int32 LeaderCommit = 6;     // leader要向状态机提交，这是leader的提交index和lastAppendIndex做对比
+}
+
+// 3. leader的心跳返回的实体
+message AppendEntriesReply{
+    int32 Term = 1;   // follower的当前记录任期
+    bool Success = 2; // 如果follow确认匹配上了entry的prevLogIndex和prevLogTrem说明这次发送的log是对的
+    int32 UpdateNextIndex = 3; // 这是自己加的
+    int32 AppState = 4; // 节点状态，自己加的
+}
+
+// 4. 请求投票的参数
+message RequestVoteArgs{
+    int32 Term = 1; // 这是candidate的任期
+    int32 CandidateId = 2; // candidate请求投票，发自己的id(在raft集群中的id)
+    int32 lastLogIndx = 3; // candidate的最后确认的log（判断很落后就不会被投票）
+    int32 lastLogTerm = 4; // candidate的最后日志任期
+}
+
+// 4. 投票者返回的参数
+message RequestVoteReply{
+    int32 Term = 1;   // 当前投票者的任期，如果这个任期比candidate的大，发起请求的candidate立马就切换回follower
+    bool VoteGranted = 2; // 是否给请求的candidate投票
+    int32 VoteState = 3; // 自己加的
+}
+
+// 5.leader发送的快照
+message InstallSnapshotRequest{
+    int32 LeaderId = 1; // leader的id，因为是leader才会同步日志
+    int32 Term = 2; // 任期
+    int32 LastIncludeIndex = 3; // 如果followr的index小于这个，followe的快照丢弃，全部使用leader的
+    int32 LastIncludedTerm = 4; // LastIncludeIndexd的任期
+    int32 offset = 5; // 这个块在快照中的偏移量
+    bytes Data = 6;  // 数据流
+    bool Done = 7; // 如果这个块是最后一个快就返回true, 不是最后一个快就要再发送
+}
+
+// 快照没有其他条件，无条件接受（符合Term的）
+message InstallSnapshotResponse{
+    int32 term = 1;
+}
+
+
+// 整个raft的rpc通信服务，一共三个
+service raftRpc{
+    rpc AppendEntries(AppendEntriesArgs) returns(AppendEntriesReply); // 心跳或者同步日志
+    rpc RequestVote (RequestVoteArgs) returns(RequestVoteReply); // 选举投票
+    rpc InstallSnapshot(InstallSnapshotRequest) returns(InstallSnapshotResponse); // leader快照同步
+}
+
+// 编译protoc -I=. --cpp_out=. raftRPC.proto

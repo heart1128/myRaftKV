@@ -2,7 +2,7 @@
  * @Author: heart1128 1020273485@qq.com
  * @Date: 2024-04-30 18:10:43
  * @LastEditors: heart1128 1020273485@qq.com
- * @LastEditTime: 2024-04-30 18:26:18
+ * @LastEditTime: 2024-05-01 17:29:48
  * @FilePath: /myRaftKv/src/rpc/include/rpcChannel.h
  * @Description: 
  */
@@ -17,6 +17,13 @@
 #include <google/protobuf/message.h>
 
 #include <string>
+#include <algorithm>  // 包含 std::generate_n() 和 std::generate() 函数的头文件
+#include <functional>
+#include <iostream>
+#include <map>
+#include <random>  // 包含 std::uniform_int_distribution 类型的头文件
+#include <unordered_map>
+#include <vector>
 
 // 这个类处理了连接
 class RpcChannel : public google::protobuf::RpcChannel{
