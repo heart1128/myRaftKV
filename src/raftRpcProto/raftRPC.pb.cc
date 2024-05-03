@@ -201,11 +201,9 @@ const ::PROTOBUF_NAMESPACE_ID::uint32 TableStruct_raftRPC_2eproto::offsets[] PRO
   ~0u,  // no _weak_field_map_
   PROTOBUF_FIELD_OFFSET(::raftRpcProtocol::InstallSnapshotRequest, leaderid_),
   PROTOBUF_FIELD_OFFSET(::raftRpcProtocol::InstallSnapshotRequest, term_),
-  PROTOBUF_FIELD_OFFSET(::raftRpcProtocol::InstallSnapshotRequest, lastincludeindex_),
-  PROTOBUF_FIELD_OFFSET(::raftRpcProtocol::InstallSnapshotRequest, lastincludedterm_),
-  PROTOBUF_FIELD_OFFSET(::raftRpcProtocol::InstallSnapshotRequest, offset_),
+  PROTOBUF_FIELD_OFFSET(::raftRpcProtocol::InstallSnapshotRequest, lastsnapshotincludeindex_),
+  PROTOBUF_FIELD_OFFSET(::raftRpcProtocol::InstallSnapshotRequest, lastsnapshotincludeterm_),
   PROTOBUF_FIELD_OFFSET(::raftRpcProtocol::InstallSnapshotRequest, data_),
-  PROTOBUF_FIELD_OFFSET(::raftRpcProtocol::InstallSnapshotRequest, done_),
   ~0u,  // no _has_bits_
   PROTOBUF_FIELD_OFFSET(::raftRpcProtocol::InstallSnapshotResponse, _internal_metadata_),
   ~0u,  // no _extensions_
@@ -220,7 +218,7 @@ static const ::PROTOBUF_NAMESPACE_ID::internal::MigrationSchema schemas[] PROTOB
   { 28, -1, sizeof(::raftRpcProtocol::RequestVoteArgs)},
   { 37, -1, sizeof(::raftRpcProtocol::RequestVoteReply)},
   { 45, -1, sizeof(::raftRpcProtocol::InstallSnapshotRequest)},
-  { 57, -1, sizeof(::raftRpcProtocol::InstallSnapshotResponse)},
+  { 55, -1, sizeof(::raftRpcProtocol::InstallSnapshotResponse)},
 };
 
 static ::PROTOBUF_NAMESPACE_ID::Message const * const file_default_instances[] = {
@@ -247,19 +245,19 @@ const char descriptor_table_protodef_raftRPC_2eproto[] PROTOBUF_SECTION_VARIABLE
   "eId\030\002 \001(\005\022\023\n\013lastLogIndx\030\003 \001(\005\022\023\n\013lastLo"
   "gTerm\030\004 \001(\005\"H\n\020RequestVoteReply\022\014\n\004Term\030"
   "\001 \001(\005\022\023\n\013VoteGranted\030\002 \001(\010\022\021\n\tVoteState\030"
-  "\003 \001(\005\"\230\001\n\026InstallSnapshotRequest\022\020\n\010Lead"
-  "erId\030\001 \001(\005\022\014\n\004Term\030\002 \001(\005\022\030\n\020LastIncludeI"
-  "ndex\030\003 \001(\005\022\030\n\020LastIncludedTerm\030\004 \001(\005\022\016\n\006"
-  "offset\030\005 \001(\005\022\014\n\004Data\030\006 \001(\014\022\014\n\004Done\030\007 \001(\010"
-  "\"\'\n\027InstallSnapshotResponse\022\014\n\004term\030\001 \001("
-  "\0052\235\002\n\007raftRpc\022X\n\rAppendEntries\022\".raftRpc"
-  "Protocol.AppendEntriesArgs\032#.raftRpcProt"
-  "ocol.AppendEntriesReply\022R\n\013RequestVote\022 "
-  ".raftRpcProtocol.RequestVoteArgs\032!.raftR"
-  "pcProtocol.RequestVoteReply\022d\n\017InstallSn"
-  "apshot\022\'.raftRpcProtocol.InstallSnapshot"
-  "Request\032(.raftRpcProtocol.InstallSnapsho"
-  "tResponseB\003\200\001\001b\006proto3"
+  "\003 \001(\005\"\211\001\n\026InstallSnapshotRequest\022\020\n\010Lead"
+  "erId\030\001 \001(\005\022\014\n\004Term\030\002 \001(\005\022 \n\030LastSnapShot"
+  "IncludeIndex\030\003 \001(\005\022\037\n\027LastSnapShotInclud"
+  "eTerm\030\004 \001(\005\022\014\n\004Data\030\005 \001(\014\"\'\n\027InstallSnap"
+  "shotResponse\022\014\n\004term\030\001 \001(\0052\235\002\n\007raftRpc\022X"
+  "\n\rAppendEntries\022\".raftRpcProtocol.Append"
+  "EntriesArgs\032#.raftRpcProtocol.AppendEntr"
+  "iesReply\022R\n\013RequestVote\022 .raftRpcProtoco"
+  "l.RequestVoteArgs\032!.raftRpcProtocol.Requ"
+  "estVoteReply\022d\n\017InstallSnapshot\022\'.raftRp"
+  "cProtocol.InstallSnapshotRequest\032(.raftR"
+  "pcProtocol.InstallSnapshotResponseB\003\200\001\001b"
+  "\006proto3"
   ;
 static const ::PROTOBUF_NAMESPACE_ID::internal::DescriptorTable*const descriptor_table_raftRPC_2eproto_deps[1] = {
 };
@@ -274,7 +272,7 @@ static ::PROTOBUF_NAMESPACE_ID::internal::SCCInfoBase*const descriptor_table_raf
 };
 static ::PROTOBUF_NAMESPACE_ID::internal::once_flag descriptor_table_raftRPC_2eproto_once;
 const ::PROTOBUF_NAMESPACE_ID::internal::DescriptorTable descriptor_table_raftRPC_2eproto = {
-  false, false, descriptor_table_protodef_raftRPC_2eproto, "raftRPC.proto", 1022,
+  false, false, descriptor_table_protodef_raftRPC_2eproto, "raftRPC.proto", 1007,
   &descriptor_table_raftRPC_2eproto_once, descriptor_table_raftRPC_2eproto_sccs, descriptor_table_raftRPC_2eproto_deps, 7, 0,
   schemas, file_default_instances, TableStruct_raftRPC_2eproto::offsets,
   file_level_metadata_raftRPC_2eproto, 7, file_level_enum_descriptors_raftRPC_2eproto, file_level_service_descriptors_raftRPC_2eproto,
@@ -1709,8 +1707,8 @@ InstallSnapshotRequest::InstallSnapshotRequest(const InstallSnapshotRequest& fro
       GetArena());
   }
   ::memcpy(&leaderid_, &from.leaderid_,
-    static_cast<size_t>(reinterpret_cast<char*>(&done_) -
-    reinterpret_cast<char*>(&leaderid_)) + sizeof(done_));
+    static_cast<size_t>(reinterpret_cast<char*>(&lastsnapshotincludeterm_) -
+    reinterpret_cast<char*>(&leaderid_)) + sizeof(lastsnapshotincludeterm_));
   // @@protoc_insertion_point(copy_constructor:raftRpcProtocol.InstallSnapshotRequest)
 }
 
@@ -1718,8 +1716,8 @@ void InstallSnapshotRequest::SharedCtor() {
   ::PROTOBUF_NAMESPACE_ID::internal::InitSCC(&scc_info_InstallSnapshotRequest_raftRPC_2eproto.base);
   data_.UnsafeSetDefault(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited());
   ::memset(&leaderid_, 0, static_cast<size_t>(
-      reinterpret_cast<char*>(&done_) -
-      reinterpret_cast<char*>(&leaderid_)) + sizeof(done_));
+      reinterpret_cast<char*>(&lastsnapshotincludeterm_) -
+      reinterpret_cast<char*>(&leaderid_)) + sizeof(lastsnapshotincludeterm_));
 }
 
 InstallSnapshotRequest::~InstallSnapshotRequest() {
@@ -1756,8 +1754,8 @@ void InstallSnapshotRequest::Clear() {
 
   data_.ClearToEmpty(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), GetArena());
   ::memset(&leaderid_, 0, static_cast<size_t>(
-      reinterpret_cast<char*>(&done_) -
-      reinterpret_cast<char*>(&leaderid_)) + sizeof(done_));
+      reinterpret_cast<char*>(&lastsnapshotincludeterm_) -
+      reinterpret_cast<char*>(&leaderid_)) + sizeof(lastsnapshotincludeterm_));
   _internal_metadata_.Clear<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>();
 }
 
@@ -1783,39 +1781,25 @@ const char* InstallSnapshotRequest::_InternalParse(const char* ptr, ::PROTOBUF_N
           CHK_(ptr);
         } else goto handle_unusual;
         continue;
-      // int32 LastIncludeIndex = 3;
+      // int32 LastSnapShotIncludeIndex = 3;
       case 3:
         if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 24)) {
-          lastincludeindex_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+          lastsnapshotincludeindex_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
           CHK_(ptr);
         } else goto handle_unusual;
         continue;
-      // int32 LastIncludedTerm = 4;
+      // int32 LastSnapShotIncludeTerm = 4;
       case 4:
         if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 32)) {
-          lastincludedterm_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
+          lastsnapshotincludeterm_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
           CHK_(ptr);
         } else goto handle_unusual;
         continue;
-      // int32 offset = 5;
+      // bytes Data = 5;
       case 5:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 40)) {
-          offset_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
-          CHK_(ptr);
-        } else goto handle_unusual;
-        continue;
-      // bytes Data = 6;
-      case 6:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 50)) {
+        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 42)) {
           auto str = _internal_mutable_data();
           ptr = ::PROTOBUF_NAMESPACE_ID::internal::InlineGreedyStringParser(str, ptr, ctx);
-          CHK_(ptr);
-        } else goto handle_unusual;
-        continue;
-      // bool Done = 7;
-      case 7:
-        if (PROTOBUF_PREDICT_TRUE(static_cast<::PROTOBUF_NAMESPACE_ID::uint8>(tag) == 56)) {
-          done_ = ::PROTOBUF_NAMESPACE_ID::internal::ReadVarint64(&ptr);
           CHK_(ptr);
         } else goto handle_unusual;
         continue;
@@ -1859,34 +1843,22 @@ failure:
     target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteInt32ToArray(2, this->_internal_term(), target);
   }
 
-  // int32 LastIncludeIndex = 3;
-  if (this->lastincludeindex() != 0) {
+  // int32 LastSnapShotIncludeIndex = 3;
+  if (this->lastsnapshotincludeindex() != 0) {
     target = stream->EnsureSpace(target);
-    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteInt32ToArray(3, this->_internal_lastincludeindex(), target);
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteInt32ToArray(3, this->_internal_lastsnapshotincludeindex(), target);
   }
 
-  // int32 LastIncludedTerm = 4;
-  if (this->lastincludedterm() != 0) {
+  // int32 LastSnapShotIncludeTerm = 4;
+  if (this->lastsnapshotincludeterm() != 0) {
     target = stream->EnsureSpace(target);
-    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteInt32ToArray(4, this->_internal_lastincludedterm(), target);
+    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteInt32ToArray(4, this->_internal_lastsnapshotincludeterm(), target);
   }
 
-  // int32 offset = 5;
-  if (this->offset() != 0) {
-    target = stream->EnsureSpace(target);
-    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteInt32ToArray(5, this->_internal_offset(), target);
-  }
-
-  // bytes Data = 6;
+  // bytes Data = 5;
   if (this->data().size() > 0) {
     target = stream->WriteBytesMaybeAliased(
-        6, this->_internal_data(), target);
-  }
-
-  // bool Done = 7;
-  if (this->done() != 0) {
-    target = stream->EnsureSpace(target);
-    target = ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::WriteBoolToArray(7, this->_internal_done(), target);
+        5, this->_internal_data(), target);
   }
 
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
@@ -1905,7 +1877,7 @@ size_t InstallSnapshotRequest::ByteSizeLong() const {
   // Prevent compiler warnings about cached_has_bits being unused
   (void) cached_has_bits;
 
-  // bytes Data = 6;
+  // bytes Data = 5;
   if (this->data().size() > 0) {
     total_size += 1 +
       ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::BytesSize(
@@ -1926,30 +1898,18 @@ size_t InstallSnapshotRequest::ByteSizeLong() const {
         this->_internal_term());
   }
 
-  // int32 LastIncludeIndex = 3;
-  if (this->lastincludeindex() != 0) {
+  // int32 LastSnapShotIncludeIndex = 3;
+  if (this->lastsnapshotincludeindex() != 0) {
     total_size += 1 +
       ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::Int32Size(
-        this->_internal_lastincludeindex());
+        this->_internal_lastsnapshotincludeindex());
   }
 
-  // int32 LastIncludedTerm = 4;
-  if (this->lastincludedterm() != 0) {
+  // int32 LastSnapShotIncludeTerm = 4;
+  if (this->lastsnapshotincludeterm() != 0) {
     total_size += 1 +
       ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::Int32Size(
-        this->_internal_lastincludedterm());
-  }
-
-  // int32 offset = 5;
-  if (this->offset() != 0) {
-    total_size += 1 +
-      ::PROTOBUF_NAMESPACE_ID::internal::WireFormatLite::Int32Size(
-        this->_internal_offset());
-  }
-
-  // bool Done = 7;
-  if (this->done() != 0) {
-    total_size += 1 + 1;
+        this->_internal_lastsnapshotincludeterm());
   }
 
   if (PROTOBUF_PREDICT_FALSE(_internal_metadata_.have_unknown_fields())) {
@@ -1992,17 +1952,11 @@ void InstallSnapshotRequest::MergeFrom(const InstallSnapshotRequest& from) {
   if (from.term() != 0) {
     _internal_set_term(from._internal_term());
   }
-  if (from.lastincludeindex() != 0) {
-    _internal_set_lastincludeindex(from._internal_lastincludeindex());
+  if (from.lastsnapshotincludeindex() != 0) {
+    _internal_set_lastsnapshotincludeindex(from._internal_lastsnapshotincludeindex());
   }
-  if (from.lastincludedterm() != 0) {
-    _internal_set_lastincludedterm(from._internal_lastincludedterm());
-  }
-  if (from.offset() != 0) {
-    _internal_set_offset(from._internal_offset());
-  }
-  if (from.done() != 0) {
-    _internal_set_done(from._internal_done());
+  if (from.lastsnapshotincludeterm() != 0) {
+    _internal_set_lastsnapshotincludeterm(from._internal_lastsnapshotincludeterm());
   }
 }
 
@@ -2029,8 +1983,8 @@ void InstallSnapshotRequest::InternalSwap(InstallSnapshotRequest* other) {
   _internal_metadata_.Swap<::PROTOBUF_NAMESPACE_ID::UnknownFieldSet>(&other->_internal_metadata_);
   data_.Swap(&other->data_, &::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), GetArena());
   ::PROTOBUF_NAMESPACE_ID::internal::memswap<
-      PROTOBUF_FIELD_OFFSET(InstallSnapshotRequest, done_)
-      + sizeof(InstallSnapshotRequest::done_)
+      PROTOBUF_FIELD_OFFSET(InstallSnapshotRequest, lastsnapshotincludeterm_)
+      + sizeof(InstallSnapshotRequest::lastsnapshotincludeterm_)
       - PROTOBUF_FIELD_OFFSET(InstallSnapshotRequest, leaderid_)>(
           reinterpret_cast<char*>(&leaderid_),
           reinterpret_cast<char*>(&other->leaderid_));

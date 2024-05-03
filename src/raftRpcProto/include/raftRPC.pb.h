@@ -1079,15 +1079,13 @@ class InstallSnapshotRequest PROTOBUF_FINAL :
   // accessors -------------------------------------------------------
 
   enum : int {
-    kDataFieldNumber = 6,
+    kDataFieldNumber = 5,
     kLeaderIdFieldNumber = 1,
     kTermFieldNumber = 2,
-    kLastIncludeIndexFieldNumber = 3,
-    kLastIncludedTermFieldNumber = 4,
-    kOffsetFieldNumber = 5,
-    kDoneFieldNumber = 7,
+    kLastSnapShotIncludeIndexFieldNumber = 3,
+    kLastSnapShotIncludeTermFieldNumber = 4,
   };
-  // bytes Data = 6;
+  // bytes Data = 5;
   void clear_data();
   const std::string& data() const;
   void set_data(const std::string& value);
@@ -1130,40 +1128,22 @@ class InstallSnapshotRequest PROTOBUF_FINAL :
   void _internal_set_term(::PROTOBUF_NAMESPACE_ID::int32 value);
   public:
 
-  // int32 LastIncludeIndex = 3;
-  void clear_lastincludeindex();
-  ::PROTOBUF_NAMESPACE_ID::int32 lastincludeindex() const;
-  void set_lastincludeindex(::PROTOBUF_NAMESPACE_ID::int32 value);
+  // int32 LastSnapShotIncludeIndex = 3;
+  void clear_lastsnapshotincludeindex();
+  ::PROTOBUF_NAMESPACE_ID::int32 lastsnapshotincludeindex() const;
+  void set_lastsnapshotincludeindex(::PROTOBUF_NAMESPACE_ID::int32 value);
   private:
-  ::PROTOBUF_NAMESPACE_ID::int32 _internal_lastincludeindex() const;
-  void _internal_set_lastincludeindex(::PROTOBUF_NAMESPACE_ID::int32 value);
+  ::PROTOBUF_NAMESPACE_ID::int32 _internal_lastsnapshotincludeindex() const;
+  void _internal_set_lastsnapshotincludeindex(::PROTOBUF_NAMESPACE_ID::int32 value);
   public:
 
-  // int32 LastIncludedTerm = 4;
-  void clear_lastincludedterm();
-  ::PROTOBUF_NAMESPACE_ID::int32 lastincludedterm() const;
-  void set_lastincludedterm(::PROTOBUF_NAMESPACE_ID::int32 value);
+  // int32 LastSnapShotIncludeTerm = 4;
+  void clear_lastsnapshotincludeterm();
+  ::PROTOBUF_NAMESPACE_ID::int32 lastsnapshotincludeterm() const;
+  void set_lastsnapshotincludeterm(::PROTOBUF_NAMESPACE_ID::int32 value);
   private:
-  ::PROTOBUF_NAMESPACE_ID::int32 _internal_lastincludedterm() const;
-  void _internal_set_lastincludedterm(::PROTOBUF_NAMESPACE_ID::int32 value);
-  public:
-
-  // int32 offset = 5;
-  void clear_offset();
-  ::PROTOBUF_NAMESPACE_ID::int32 offset() const;
-  void set_offset(::PROTOBUF_NAMESPACE_ID::int32 value);
-  private:
-  ::PROTOBUF_NAMESPACE_ID::int32 _internal_offset() const;
-  void _internal_set_offset(::PROTOBUF_NAMESPACE_ID::int32 value);
-  public:
-
-  // bool Done = 7;
-  void clear_done();
-  bool done() const;
-  void set_done(bool value);
-  private:
-  bool _internal_done() const;
-  void _internal_set_done(bool value);
+  ::PROTOBUF_NAMESPACE_ID::int32 _internal_lastsnapshotincludeterm() const;
+  void _internal_set_lastsnapshotincludeterm(::PROTOBUF_NAMESPACE_ID::int32 value);
   public:
 
   // @@protoc_insertion_point(class_scope:raftRpcProtocol.InstallSnapshotRequest)
@@ -1176,10 +1156,8 @@ class InstallSnapshotRequest PROTOBUF_FINAL :
   ::PROTOBUF_NAMESPACE_ID::internal::ArenaStringPtr data_;
   ::PROTOBUF_NAMESPACE_ID::int32 leaderid_;
   ::PROTOBUF_NAMESPACE_ID::int32 term_;
-  ::PROTOBUF_NAMESPACE_ID::int32 lastincludeindex_;
-  ::PROTOBUF_NAMESPACE_ID::int32 lastincludedterm_;
-  ::PROTOBUF_NAMESPACE_ID::int32 offset_;
-  bool done_;
+  ::PROTOBUF_NAMESPACE_ID::int32 lastsnapshotincludeindex_;
+  ::PROTOBUF_NAMESPACE_ID::int32 lastsnapshotincludeterm_;
   mutable ::PROTOBUF_NAMESPACE_ID::internal::CachedSize _cached_size_;
   friend struct ::TableStruct_raftRPC_2eproto;
 };
@@ -1946,67 +1924,47 @@ inline void InstallSnapshotRequest::set_term(::PROTOBUF_NAMESPACE_ID::int32 valu
   // @@protoc_insertion_point(field_set:raftRpcProtocol.InstallSnapshotRequest.Term)
 }
 
-// int32 LastIncludeIndex = 3;
-inline void InstallSnapshotRequest::clear_lastincludeindex() {
-  lastincludeindex_ = 0;
+// int32 LastSnapShotIncludeIndex = 3;
+inline void InstallSnapshotRequest::clear_lastsnapshotincludeindex() {
+  lastsnapshotincludeindex_ = 0;
 }
-inline ::PROTOBUF_NAMESPACE_ID::int32 InstallSnapshotRequest::_internal_lastincludeindex() const {
-  return lastincludeindex_;
+inline ::PROTOBUF_NAMESPACE_ID::int32 InstallSnapshotRequest::_internal_lastsnapshotincludeindex() const {
+  return lastsnapshotincludeindex_;
 }
-inline ::PROTOBUF_NAMESPACE_ID::int32 InstallSnapshotRequest::lastincludeindex() const {
-  // @@protoc_insertion_point(field_get:raftRpcProtocol.InstallSnapshotRequest.LastIncludeIndex)
-  return _internal_lastincludeindex();
+inline ::PROTOBUF_NAMESPACE_ID::int32 InstallSnapshotRequest::lastsnapshotincludeindex() const {
+  // @@protoc_insertion_point(field_get:raftRpcProtocol.InstallSnapshotRequest.LastSnapShotIncludeIndex)
+  return _internal_lastsnapshotincludeindex();
 }
-inline void InstallSnapshotRequest::_internal_set_lastincludeindex(::PROTOBUF_NAMESPACE_ID::int32 value) {
+inline void InstallSnapshotRequest::_internal_set_lastsnapshotincludeindex(::PROTOBUF_NAMESPACE_ID::int32 value) {
   
-  lastincludeindex_ = value;
+  lastsnapshotincludeindex_ = value;
 }
-inline void InstallSnapshotRequest::set_lastincludeindex(::PROTOBUF_NAMESPACE_ID::int32 value) {
-  _internal_set_lastincludeindex(value);
-  // @@protoc_insertion_point(field_set:raftRpcProtocol.InstallSnapshotRequest.LastIncludeIndex)
+inline void InstallSnapshotRequest::set_lastsnapshotincludeindex(::PROTOBUF_NAMESPACE_ID::int32 value) {
+  _internal_set_lastsnapshotincludeindex(value);
+  // @@protoc_insertion_point(field_set:raftRpcProtocol.InstallSnapshotRequest.LastSnapShotIncludeIndex)
 }
 
-// int32 LastIncludedTerm = 4;
-inline void InstallSnapshotRequest::clear_lastincludedterm() {
-  lastincludedterm_ = 0;
+// int32 LastSnapShotIncludeTerm = 4;
+inline void InstallSnapshotRequest::clear_lastsnapshotincludeterm() {
+  lastsnapshotincludeterm_ = 0;
 }
-inline ::PROTOBUF_NAMESPACE_ID::int32 InstallSnapshotRequest::_internal_lastincludedterm() const {
-  return lastincludedterm_;
+inline ::PROTOBUF_NAMESPACE_ID::int32 InstallSnapshotRequest::_internal_lastsnapshotincludeterm() const {
+  return lastsnapshotincludeterm_;
 }
-inline ::PROTOBUF_NAMESPACE_ID::int32 InstallSnapshotRequest::lastincludedterm() const {
-  // @@protoc_insertion_point(field_get:raftRpcProtocol.InstallSnapshotRequest.LastIncludedTerm)
-  return _internal_lastincludedterm();
+inline ::PROTOBUF_NAMESPACE_ID::int32 InstallSnapshotRequest::lastsnapshotincludeterm() const {
+  // @@protoc_insertion_point(field_get:raftRpcProtocol.InstallSnapshotRequest.LastSnapShotIncludeTerm)
+  return _internal_lastsnapshotincludeterm();
 }
-inline void InstallSnapshotRequest::_internal_set_lastincludedterm(::PROTOBUF_NAMESPACE_ID::int32 value) {
+inline void InstallSnapshotRequest::_internal_set_lastsnapshotincludeterm(::PROTOBUF_NAMESPACE_ID::int32 value) {
   
-  lastincludedterm_ = value;
+  lastsnapshotincludeterm_ = value;
 }
-inline void InstallSnapshotRequest::set_lastincludedterm(::PROTOBUF_NAMESPACE_ID::int32 value) {
-  _internal_set_lastincludedterm(value);
-  // @@protoc_insertion_point(field_set:raftRpcProtocol.InstallSnapshotRequest.LastIncludedTerm)
+inline void InstallSnapshotRequest::set_lastsnapshotincludeterm(::PROTOBUF_NAMESPACE_ID::int32 value) {
+  _internal_set_lastsnapshotincludeterm(value);
+  // @@protoc_insertion_point(field_set:raftRpcProtocol.InstallSnapshotRequest.LastSnapShotIncludeTerm)
 }
 
-// int32 offset = 5;
-inline void InstallSnapshotRequest::clear_offset() {
-  offset_ = 0;
-}
-inline ::PROTOBUF_NAMESPACE_ID::int32 InstallSnapshotRequest::_internal_offset() const {
-  return offset_;
-}
-inline ::PROTOBUF_NAMESPACE_ID::int32 InstallSnapshotRequest::offset() const {
-  // @@protoc_insertion_point(field_get:raftRpcProtocol.InstallSnapshotRequest.offset)
-  return _internal_offset();
-}
-inline void InstallSnapshotRequest::_internal_set_offset(::PROTOBUF_NAMESPACE_ID::int32 value) {
-  
-  offset_ = value;
-}
-inline void InstallSnapshotRequest::set_offset(::PROTOBUF_NAMESPACE_ID::int32 value) {
-  _internal_set_offset(value);
-  // @@protoc_insertion_point(field_set:raftRpcProtocol.InstallSnapshotRequest.offset)
-}
-
-// bytes Data = 6;
+// bytes Data = 5;
 inline void InstallSnapshotRequest::clear_data() {
   data_.ClearToEmpty(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(), GetArena());
 }
@@ -2085,26 +2043,6 @@ inline void InstallSnapshotRequest::unsafe_arena_set_allocated_data(
   data_.UnsafeArenaSetAllocated(&::PROTOBUF_NAMESPACE_ID::internal::GetEmptyStringAlreadyInited(),
       data, GetArena());
   // @@protoc_insertion_point(field_unsafe_arena_set_allocated:raftRpcProtocol.InstallSnapshotRequest.Data)
-}
-
-// bool Done = 7;
-inline void InstallSnapshotRequest::clear_done() {
-  done_ = false;
-}
-inline bool InstallSnapshotRequest::_internal_done() const {
-  return done_;
-}
-inline bool InstallSnapshotRequest::done() const {
-  // @@protoc_insertion_point(field_get:raftRpcProtocol.InstallSnapshotRequest.Done)
-  return _internal_done();
-}
-inline void InstallSnapshotRequest::_internal_set_done(bool value) {
-  
-  done_ = value;
-}
-inline void InstallSnapshotRequest::set_done(bool value) {
-  _internal_set_done(value);
-  // @@protoc_insertion_point(field_set:raftRpcProtocol.InstallSnapshotRequest.Done)
 }
 
 // -------------------------------------------------------------------

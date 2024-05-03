@@ -257,11 +257,12 @@ bool Raft::sendRequestVote(int server, std::shared_ptr<raftRpcProtocol::RequestV
 
 }
 
+
 /// @brief 直接调用RequestVote函数处理投票，上面远程调用利用stub发送，这里就是服务端的远程调用处理函数
-/// @param controller 
-/// @param request 
-/// @param response 
-/// @param done 
+/// @param controller
+/// @param request
+/// @param response
+/// @param done
 void Raft::RequestVote(google::protobuf::RpcController *controller, const ::raftRpcProtocol::RequestVoteArgs *request, 
                     ::raftRpcProtocol::RequestVoteReply *response, ::google::protobuf::Closure *done)
 {
@@ -271,8 +272,8 @@ void Raft::RequestVote(google::protobuf::RpcController *controller, const ::raft
 }
 
 /// @brief 处理投票过程
-/// @param args 
-/// @param reply 
+/// @param args
+/// @param reply
 void Raft::RequestVote(const raftRpcProtocol::RequestVoteArgs *args, raftRpcProtocol::RequestVoteReply *reply)
 {
     std::lock_guard<std::mutex> lock(m_mutex);  // 选举过程不能被干涉，万一两个候选人同时投票就出错了
@@ -344,6 +345,467 @@ void Raft::RequestVote(const raftRpcProtocol::RequestVoteArgs *args, raftRpcProt
 }
 
 /***********************************************************/
+/**                   leader发送心跳、日志过程               **/
+/***********************************************************/
+
+/// @brief leader发送心跳或者日志事件
+void Raft::leaderHeartBeatTicker()
+{
+    // m_eventLoop.runEvery(1000 * HeartBeatTimeout, std::bind(&Raft::HeartBeatTicker, this));
+
+    while(true)
+    {
+        while(m_status != LEADER)
+        {
+            usleep(1000 * HeartBeatTimeout);
+        }
+
+        static std::atomic<int32_t> atomicCount;
+        atomicCount.store(0);
+
+        // std::chrono::duration<signed long int, std::ratio<1, 1000000000>> suitableSleepTime{};   // 这样写觉得不好，9个0容易写错，用自带的ns就行
+        std::chrono::duration<signed long int, std::nano> suitableSleepTime{};      // 设置一个合适的睡眠时间，等待下次心跳触发
+        std::chrono::system_clock::time_point wakeTime{};                           // 这个变量要接收now
+        {
+            std::lock_guard<std::mutex> lock(m_mutex);
+            wakeTime = now();
+            suitableSleepTime = std::chrono::milliseconds(HeartBeatTimeout) + m_lastResetHearBeatTime - wakeTime; // 睡眠时间（下一次超时时间）
+        }
+
+        if(std::chrono::duration<double, std::milli>(suitableSleepTime).count() > 1) // 要睡眠的时间 > 1ms
+        {
+            std::cout << atomicCount << "\033[1;35m leaderHearBeatTicker();函数设置睡眠时间为: "
+                << std::chrono::duration_cast<std::chrono::milliseconds>(suitableSleepTime).count() << " 毫秒\033[0m"
+                << std::endl;
+            
+            auto start = std::chrono::steady_clock::now();            // 这是时间是从boot启动到现在的时间，是相对的
+
+            usleep(std::chrono::duration_cast<std::chrono::microseconds>(suitableSleepTime).count()); // 睡眠单位 us
+
+            auto end = std::chrono::steady_clock::now();
+
+            std::chrono::duration<double, std::milli> duration = end - start; // 计算睡眠了多少 ms
+
+            // 使用ANSI控制序列将输出颜色修改为紫色
+            std::cout << atomicCount << "\033[1;35m leaderHearBeatTicker();函数实际睡眠时间为: " << duration.count()
+                << " 毫秒\033[0m" << std::endl;
+            
+            ++atomicCount;                  // 计算睡眠次数
+        }
+
+        if(std::chrono::duration<double, std::milli>(m_lastResetHearBeatTime - wakeTime).count() > 0)  // 到了下一次心跳的超时
+        {
+            // 这里是因为如果m_lastResetHearBeatTime没有被重置，wakeTime>m_lastResetHearBeatTime的
+            // 如果重置了 m_lastResetHearBeatTime肯定比上面的now()大
+            continue;       // 重新心跳计时
+        }
+
+        doHeartBeat();      // 心跳超时，发起心跳。
+    }
+}
+
+/// @brief leader发送心跳，并且同步log或者snapshot。follower收到日志就算心跳
+void Raft::doHeartBeat()
+{
+    std::lock_guard<std::mutex> lock(m_mutex);
+
+    if(m_status == LEADER)
+    {
+        DPrintf("[func-Raft::doHeartBeat()-Leader: {%d}] Leader的心跳定时器触发了且拿到mutex，开始发送AE\n", m_me);
+
+        auto appendNums = std::make_shared<int>(1);
+
+        // 发送日志（可以拆分）
+            // 1.1 如果nextIndex(日志同步index) >= lastSnapshotIndex(快照的最后index) 说明日志更新，发送日志
+            // 1.2 相反的，说明日志包含了要发送的log，需要发送整个快照，follower接收后丢弃自己的快照，直接用这个最新的快照
+        
+        for(int i = 0; i < m_peers.size(); ++i)
+        {
+            if(i == m_me)
+            {
+                continue;
+            }
+            
+            DPrintf("[func-Raft::doHeartBeat()-Leader: {%d}] Leader的心跳定时器触发了 index:{%d}\n", m_me, i);
+            myAssert(m_nextIndex[i] >= 1, format("rf.nextIndex[%d] = {%d}", i, m_nextIndex[i]));            
+
+            // 1.2 快照包含最新未同步log的情况
+            if(m_nextIndex[i] < m_lastSnapshotIncludeIndex)
+            {
+                std::thread(&Raft::leaderSendSnapShot, this, i).detach();   // 线程发送快照，指定server
+                continue;
+            }
+
+
+            // 1.1 log更新的情况，这时候就要找上次同步的log index， 发送[perLogIndex, ]的log
+            int prevLogIndex = -1;
+            int prevLogTerm = -1;
+            getPrevLogInfo(i, &prevLogIndex, &prevLogIndex);   
+
+/// TODO 为什么这个要用智能指针包裹？---> 因为protobuf中有嵌套类型，内部就会申请内存，但是要手动释放(delete)
+///     使用protobuf的clear()只是把数组初始化为0，不会释放内存，和stl不同
+///     使用shared_ptr,析构的时候就会把管理的protobuf内存全部释放，不会有内存泄漏
+//  !!!!  这就是上次面试问我的protobuf嵌套有什么问题的答案！！！！
+            std::shared_ptr<raftRpcProtocol::AppendEntriesArgs> appendEntriesArgs =         // 发送日志的rpc参数填写
+                            std::make_shared<raftRpcProtocol::AppendEntriesArgs>();
+            
+            appendEntriesArgs->set_term(m_currentTerm);
+            appendEntriesArgs->set_leaderid(m_me);
+            appendEntriesArgs->set_prevlogindex(prevLogIndex);
+            appendEntriesArgs->set_prevlogterm(prevLogTerm);
+            appendEntriesArgs->clear_entries();                 // clear只是把数组置为0，和stl不同
+            appendEntriesArgs->set_leadercommit(m_commitIndex);
+
+            // 1.1.1 如果上一条不是已经做成快照的，就要从index一直到最后发送
+            // 1.1.2 如果上一条做成快照了，那就只要发送全部的log就行
+            if(prevLogIndex != m_lastSnapshotIncludeIndex)      
+            {
+                for(int j = getSlicesIndexFromLogIndex(prevLogIndex) + 1; j < m_logs.size(); ++j)
+                {
+                    raftRpcProtocol::LogEntry* sendEntryPtr = appendEntriesArgs->add_entries();
+                    *sendEntryPtr = m_logs[j];          // 通过指针方式添加，= 是重载的，内部就是cpoy一个m_logs到entries数组中
+                }
+            }    
+            else
+            {
+                for(const auto& log : m_logs)
+                {
+                    raftRpcProtocol::LogEntry* sendEntryPtr = appendEntriesArgs->add_entries();
+                    *sendEntryPtr = log;          // 通过指针方式添加，= 是重载的，内部就是cpoy一个m_logs到entries数组中
+                }
+            } 
+
+            int lastLogIndex = getLastLogIndex();   // 就是看看加入到数组的个数是不是要发送的个数
+            // leader对每个节点发送的日志长短不一，但是都保证从prevIndex发送直到最后
+            myAssert(appendEntriesArgs->prevlogindex() + appendEntriesArgs->entries_size() == lastLogIndex,
+                    format("appendEntriesArgs.PrevLogIndex{%d}+len(appendEntriesArgs.Entries){%d} != lastLogIndex{%d}",
+                            appendEntriesArgs->prevlogindex(), appendEntriesArgs->entries_size(), lastLogIndex));
+            
+
+            const std::shared_ptr<raftRpcProtocol::AppendEntriesReply> appendEntriesReply =
+                    std::make_shared<raftRpcProtocol::AppendEntriesReply>();
+            
+            appendEntriesReply->set_appstate(Disconnected);
+            
+            // 3. 发送并且处理返回值，线程做
+            std::thread(&Raft::sendAppendEntries, this, i ,appendEntriesArgs, appendEntriesReply, appendNums).detach();
+        }
+
+        m_lastResetHearBeatTime = now(); // 对全部的follower发送心跳日志之后就要重置
+    }
+}
+
+/// @brief 
+/// @param server 
+/// @param args 
+/// @param reply 
+/// @param appendNums 
+/// @return 发送是否成功，不是follower是否接收log
+bool Raft::sendAppendEntries(int server, std::shared_ptr<raftRpcProtocol::AppendEntriesArgs> args, 
+                            std::shared_ptr<raftRpcProtocol::AppendEntriesReply> reply, std::shared_ptr<int> appendNums)
+{
+    // 发送的开头不加锁，论文中要求如果发送log失败应该不断重试retries
+    DPrintf("[func-Raft::sendAppendEntries-raft{%d}] leader 向节点{%d}发送AE rpc開始 ， args->entries_size():{%d}", m_me,
+          server, args->entries_size());
+        
+    
+    bool ok = m_peers[server]->AppendEntries(args.get(), reply.get());
+
+    if (!ok) 
+    {
+        DPrintf("[func-Raft::sendAppendEntries-raft{%d}] leader 向节点{%d}发送AE rpc失敗", m_me, server);
+        return ok;
+    }
+    DPrintf("[func-Raft::sendAppendEntries-raft{%d}] leader 向节点{%d}发送AE rpc成功", m_me, server);
+    if (reply->appstate() == Disconnected)          // 节点状态是失败的
+    {
+        return ok;
+    }
+
+    // 这部分涉及到index和term操作，加锁，处理rpc回复
+    {
+        std::lock_guard<std::mutex> lock(m_mutex);
+
+
+        // 任期必须相同，不相同的不能更新log
+        if(reply->term() > m_currentTerm)
+        {
+            m_status = FOLLOWER;
+            m_votedFor = -1;
+            m_currentTerm = reply->term();
+            m_lastResetElectionTime = now();
+            return ok;
+        }
+        else if(reply->term() < m_currentTerm)
+        {
+            DPrintf("[func -sendAppendEntries  rf{%d}]  节点：{%d}的term{%d}<rf{%d}的term{%d}\n", m_me, server, reply->term(),
+                m_me, m_currentTerm);
+            return ok;
+        }
+
+        if(m_status != LEADER)
+            return ok;
+        
+        // 这里的term是相同的
+        myAssert(reply->term() == m_currentTerm,
+           format("reply.Term{%d} != rf.currentTerm{%d}   ", reply->term(), m_currentTerm));
+
+        
+        if(!reply->success())                       // 更新失败，说明日志不匹配，前几次同步的log出问题了
+        {
+            if(reply->updatenextindex() != 100)     // 这是follower失败设定的默认值
+            {
+                DPrintf("[func -sendAppendEntries  rf{%d}]  返回的日志term相等，但是不匹配，回缩nextIndex[%d]：{%d}\n", m_me,
+                        server, reply->updatenextindex());
+                
+                m_nextIndex[server] = reply->updatenextindex(); // 重置要同步的index， 不匹配foller会自己要同步的index发回来
+            }
+        }
+        else                                        // 更新成功，日志，任期都匹配了
+        {
+            *appendNums = *appendNums + 1;          // 同步的follower+1 ，超过半数+1就能够commit
+            DPrintf("---------------------------tmp------------------------- 节点{%d}返回true，log同步成功,当前同步节点数量*appendNums{%d}", server,
+                *appendNums);
+            
+            m_matchIndex[server] = std::max(m_matchIndex[server], args->prevlogindex() + args->entries_size()); // 更新节点已经同步的index
+            m_nextIndex[server] = m_matchIndex[server] + 1; // nextIndex设定的最新的都是matchindex+1，但不是多余的，可以判断next - match之间有多少log没有开始同步
+
+            int lastLogIndex = getLastLogIndex();
+            myAssert(m_nextIndex[server] <= lastLogIndex + 1,
+                    format("error msg:rf.nextIndex[%d] > lastLogIndex+1, len(rf.logs) = %d   lastLogIndex{%d} = %d", server,
+                            m_logs.size(), server, lastLogIndex));
+            
+            /////// 提交到状态机，前提是满足同步成功回复的数量 > 半数 + 1
+/// TODO    是不是可以设计成acks，和kafka一样的三种同步模式
+
+            if(*appendNums >= m_peers.size() / 2 + 1)
+            {
+                *appendNums = 0;    // 必须设置0，否则会再次提交，没有幂等性
+                
+                if(args->entries_size() > 0)    // 更新commitIndex的值，同步了多少log就提交多少
+                {
+                    DPrintf("args->entries(args->entries_size()-1).logterm(){%d}   m_currentTerm{%d}",
+                        args->entries(args->entries_size() - 1).logterm(), m_currentTerm);
+
+/// TODO    没怎么想明白为什么要等有写入才commit https://zhuanlan.zhihu.com/p/517969401
+                    // 保证当前任期有日志同步，这段提交的log可能是有不同的term，也就是每个Log可能任期不同
+                    // 保证一个特性：领导人完备性（新的leader上任，只有新的leader有了log同步保存，才会让前面的term进行提交）
+
+// 总结：raft的日志有两个性质：（1）如果不同节点的entry的index和term相同，那么这两个entry一定相同
+//                          (2)如果不同节点的entry的index和term相同，那么这个evtry之前的log全部相同
+// 场景就是：(1)上一个leader同步消息，但是没有commit（问题：可能只有几个follower收到同步）
+//        （2）新的leader上任，因为上一任同步的消息没有commit，还有一部分没有同步上一任的log（当前leader日志是最新的，肯定同步到了）
+//              (2.1) 这时候如果新leader直接commit了，导致有些folloer没有上一任leader同步的消息，数据不一致
+//              (2.2) 如果等到新的leader有数据同步了，!!!!就会从上一任没有commit的地方发起同步（重点！！！），（上一任没有同步到的follower被新的leader同步）
+//                           因为新leader肯定有上一任leader发送过来uncommit的日志，所以会把这部分的日志一起发起同步数据一致。
+//              (2.3) 如果新任leader直接commit上一任的同步，下次发起同步就不会再带着之前其他follower没有收到的日志同步
+
+//  本质问题就是：不提交上一个leader的uncommit部分。等到下一次一起同步（同步从uncommit的部分开始）（不一定要有新数据，发一个空的entey也行，就是为了把上一任uncommit部分再发一遍）
+                    if(args->entries(args->entries_size() - 1).logterm() == m_currentTerm) 
+                    {
+                        DPrintf(
+                            "---------------------------tmp------------------------- 当前term有log成功提交，更新leader的m_commitIndex "
+                            "from{%d} to{%d}",
+                            m_commitIndex, args->prevlogindex() + args->entries_size());
+                        // 更新commit就是从上一次uncommit的index开始
+                        m_commitIndex = std::max(m_commitIndex, args->prevlogindex() + args->entries_size());
+                    }
+
+                    myAssert(m_commitIndex <= lastLogIndex,
+               format("[func-sendAppendEntries,rf{%d}] lastLogIndex:%d  rf.commitIndex:%d\n", m_me, lastLogIndex,
+                      m_commitIndex));
+                }
+            }
+        }
+    }
+    return ok;
+}
+
+/// @brief 指定server发送leader的快照，在最新log已经被做成snapshot的情况下
+/// @param server 
+void Raft::leaderSendSnapShot(int server)
+{
+   // 1. 设置发送快照的protobuf参数
+    std::unique_lock<std::mutex> lock(m_mutex);
+
+    raftRpcProtocol::InstallSnapshotRequest args;
+    args.set_leaderid(m_me);
+    args.set_term(m_currentTerm);
+    args.set_lastsnapshotincludeindex(m_lastSnapshotIncludeIndex);
+    args.set_lastsnapshotincludeterm(m_lastSnapshotIncludeTerm);
+    args.set_data(m_persister->ReadSnapshot());     // 全部snapshot发送   
+    
+    raftRpcProtocol::InstallSnapshotResponse reply;
+
+    lock.unlock();
+
+    bool ok = m_peers[server]->InstallSnapshot(&args, &reply);      // 发送rpc
+
+    lock.lock();
+
+    if(!ok)
+    {
+        return;     // 发送失败
+    }
+
+    if(m_status != LEADER || m_currentTerm != args.term())          // 中间发送不是加锁的，可能当前的状态都变了
+    {
+        return;
+    }
+
+    // 2. 处理回复
+    if(reply.term() > m_currentTerm)                                // 对方的任期比leader还高，可能是脑裂过
+    {
+        m_currentTerm = reply.term();
+        m_votedFor = -1;                // 要转变为follower
+        m_status = FOLLOWER;
+
+        persist();                      // 有状态变化
+
+        m_lastResetElectionTime = now(); // 变成了follower所有参数都要开始设置
+        return;
+    }
+
+    m_matchIndex[server] = args.lastsnapshotincludeindex(); // 最后的快照index就是已经同步并且得到确认的
+    m_nextIndex[server] = m_matchIndex[server] + 1;         // 下一个要同步的当然是最新同步的 + 1
+}
+
+/// @brief folloer处理leader同步的log，函数调用流程raftRpcUtil->AppendEntries()->this->AppendEntries()->this->AppendEntries1()
+/// @param controller 
+/// @param request 
+/// @param response 
+/// @param done 
+void Raft::AppendEntries(google::protobuf::RpcController *controller, const ::raftRpcProtocol::AppendEntriesArgs *request, 
+                        ::raftRpcProtocol::AppendEntriesReply *response, ::google::protobuf::Closure *done)
+{
+    AppendEntries1(request, response);
+    done->Run();
+}
+
+/// @brief 处理log，follower加入leader同步的log
+/// @param args    
+/// @param reply 
+void Raft::AppendEntries1(const raftRpcProtocol::AppendEntriesArgs *args, raftRpcProtocol::AppendEntriesReply *reply)
+{
+    std::lock_guard<std::mutex> lock(m_mutex);
+
+    reply->set_appstate(AppNormal);         // 收到消息，证明网络是正常的
+
+    if(args->term() < m_currentTerm)        // 过期leader(可能是网络分区之后刚加上来的，所以term远低于当前term)
+    {
+        reply->set_success(false);
+        reply->set_term(m_currentTerm);
+        reply->set_updatenextindex(-100);   // 设置为-100,leader收到之后这里是什么也不做，就当没有收到，下一任leader会重发的
+
+        DPrintf("[func-AppendEntries-rf{%d}] 拒绝了 因为Leader{%d}的term{%v}< rf{%d}.term{%d}\n", m_me, args->leaderid(),
+            args->term(), m_me, m_currentTerm);
+        return;                             // 注意从过期的领导人收到消息不要重设定时器
+    }
+
+    DEFER {
+        persist();                          // 放在最后了，DEFER宏一直报错
+    };
+
+    if(args->term() > m_currentTerm)        // 任期落后了，就要全部打回follower
+    {
+        m_status = FOLLOWER;                
+        m_currentTerm = args->term();
+        m_votedFor = -1;
+    }
+    myAssert(args->term() == m_currentTerm, format("assert {args.Term == rf.currentTerm} fail"));
+
+    m_status = FOLLOWER;                    // 收到心跳，可能当前是候选人，直接就变成FOLLOWER
+    m_lastResetElectionTime = now();        // 变成follower肯定要超时设置
+
+
+    // 更新日志有三种情况
+        // 1. 上次更新的日志超过了follower最后同步的日志，出错了。中间还有一部分没有更新到
+        // 2. 上次更新的日志比folloer的snapshot还要旧（说明是rpc延迟了）
+        // 3. 正常日志，上次更新的和follower的lastLogINdex是一样的
+    
+    if(args->prevlogindex() > getLastLogIndex())                // 第一种情况
+    {
+        reply->set_success(false);
+        reply->set_term(m_currentTerm);
+        reply->set_updatenextindex(getLastLogIndex() + 1);      // 这里发送follower当前的更新进度+1,+1是请求下一个，leader收到就会更新nextIndex[i]
+        return;
+    }
+    else if(args->prevlogindex() < m_lastSnapshotIncludeIndex)  // 第二种情况
+    {
+        reply->set_success(false);
+        reply->set_term(m_currentTerm);
+        reply->set_updatenextindex(m_lastSnapshotIncludeIndex + 1);// 让leader跟上快照
+    }
+
+
+    if(matchLog(args->prevlogindex(), args->prevlogterm()))     // index必须满足上面的条件，term必须相同
+    {
+        // 即使prevLoginIndex是对的，也不能单纯的直接加入logs，还是要判断每个log是不是符合
+        // 1. 每个Log的longindex > follower的lastLogIndex 成立
+        // 2. 如果index和term都相同，但是commond不同，就违反了raft的日志同步原则，报错
+        // 3. 如果log的任期不同，前面已经判断过leader的term肯定是更大的，进行覆盖（这里就不能保证一致性了）
+
+        for(int i = 0; i < args->entries_size(); ++i)
+        {
+            auto log = args->entries(i);
+            
+            if(log.logindex() > getLastLogIndex()) // 情况1
+            {
+                m_logs.emplace_back(log);           // log临时变量，不使用了
+            }
+            else                                    
+            {
+                if(m_logs[getSlicesIndexFromLogIndex(log.logindex())].logterm() == log.logterm() && // 情况2, 相同位置不同指令
+                    m_logs[getSlicesIndexFromLogIndex(log.logindex())].command() != log.command())
+                {
+                        myAssert(false, format("[func-AppendEntries-rf{%d}] 两节点logIndex{%d}和term{%d}相同，但是其command{%d:%d}   "
+                                " {%d:%d}却不同！！\n",
+                                m_me, log.logindex(), log.logterm(), m_me,
+                                m_logs[getSlicesIndexFromLogIndex(log.logindex())].command(), args->leaderid(),
+                                log.command()));
+                }
+
+                if(m_logs[getSlicesIndexFromLogIndex(log.logindex())].logterm() != log.logterm()) // 情况3，相同位置不同任期，覆盖（数据不一致了）
+                {
+                    m_logs[getSlicesIndexFromLogIndex(log.logindex())] = log;
+                }
+            }
+        }
+
+        myAssert(
+            getLastLogIndex() >= args->prevlogindex() + args->entries_size(),
+            format("[func-AppendEntries1-rf{%d}]rf.getLastLogIndex(){%d} != args.PrevLogIndex{%d}+len(args.Entries){%d}",
+                m_me, getLastLogIndex(), args->prevlogindex(), args->entries_size()));
+        
+        // 日志更新完成
+        reply->set_success(true);
+        reply->set_term(m_currentTerm);
+        return;
+    }
+    else  // if(matchLog(args->prevlogindex(), args->prevlogterm()))   term不匹配的问题
+    {
+        // 任期不同但是index都相同，可能是leader接收完数据就宕机，没同步。立马开始变成了follower，新的leader发送过来，自己index相同但是本身term就是小一个
+
+        reply->set_updatenextindex(args->prevlogindex()); // 要求更新的index就是这个，只是任期不同而已
+
+        // 出现上面那种情况，leader本身收到的数据就是要丢弃的数据了，找到那个term
+        // 设置为一次倒退多个匹配更好，否则一个个倒退找不同term的就发送多个rpc了
+        for(int index = args->prevlogindex(); index >= m_lastSnapshotIncludeIndex; --index)
+        {
+            if(getLogTermFromLogIndex(index) != getLogTermFromLogIndex(args->prevlogindex())) // 找到不同的第一个任期index，下次同步就是这个index，会覆盖index之后的
+            {
+                reply->set_updatenextindex(index + 1);
+                break;
+            }
+        }
+
+        reply->set_success(false);           // 不同任期肯定失败
+        reply->set_term(m_currentTerm);
+        return;
+    }
+}
+
+/***********************************************************/
 /**                     辅助函数                     **/
 /***********************************************************/
 
@@ -364,6 +826,7 @@ void Raft::getLastLogIndexAndTerm(int *lastLogIndex, int *lastLogTerm)
         *lastLogTerm = m_logs.rbegin()->logterm();
     }
 }
+
 
 /// @brief 分为logs空和非空
 /// @return 最后一个log的index
@@ -388,4 +851,63 @@ bool Raft::UpToDate(int index, int term)
     // 1. 任期更大的直接投票
     // 2. 任期相同，但是index更大的也能投票
     return term > selfLastLogTerm || (term == selfLastLogTerm && index >= selfLastLogIndex);
+}
+
+/// @brief 持久化数据，具体数据看定义的
+void Raft::persist()
+{
+    auto data = getPerSistData();
+    m_persister->SaveRaftState(data);       // 做法就是把data写入stringstream中
+}
+
+/// @brief 找到上次同步的index和term，分为两种情况，具体见函数内部
+/// @param server 
+/// @param preIndex 
+/// @param preTerm 
+void Raft::getPrevLogInfo(int server, int *preIndex, int *preTerm)
+{
+    // 1. 如果下一次要同步的log就是最新的，那么上次同步的log就是已经被snapshot的
+    if(m_nextIndex[server] == m_lastSnapshotIncludeIndex + 1)
+    {
+        *preIndex = m_lastSnapshotIncludeIndex;
+        *preTerm = m_lastSnapshotIncludeTerm;
+        return;
+    }
+
+    // 2. 上次发送的还没有做成snapshot
+    auto nextIndex = m_nextIndex[server];
+    *preIndex = nextIndex - 1;
+    *preTerm = m_logs[getSlicesIndexFromLogIndex(*preIndex)].logterm(); // 这里是因为当前的term不一定是上一条log的任期，所以要去找上一条的term
+}
+
+/// @brief 在上一次没有被做成快照的情况下，需要找它的term，因为当前term可能已经改变
+/// @param logIndex 
+/// @return 找到的上一的真实任期
+int Raft::getSlicesIndexFromLogIndex(int logIndex)
+{
+    // log的index必须是在快照之后的，不然就应该是快照的term
+    myAssert(logIndex > m_lastSnapshotIncludeIndex,
+           format("[func-getSlicesIndexFromLogIndex-rf{%d}]  index{%d} <= rf.lastSnapshotIncludeIndex{%d}", m_me,
+                  logIndex, m_lastSnapshotIncludeIndex));
+                
+    int lastLogIndex = getLastLogIndex();   // 从m_logs的最后一条拿
+
+    // 如果当前的最后一条logs比要找的小，就会出问题说明不存在
+    myAssert(logIndex <= lastLogIndex, format("[func-getSlicesIndexFromLogIndex-rf{%d}]  logIndex{%d} > lastLogIndex{%d}",
+                                            m_me, logIndex, lastLogIndex));
+    
+    int sliceIndex = logIndex - m_lastSnapshotIncludeIndex - 1;  // 真实的位置就是这个log的index-快照最后保存的位置
+    return sliceIndex;
+}
+
+/// @brief 比较任期相同、logIndex不能超过当前快照index，必须大于当前最小的logIndex
+/// @param logIndex 
+/// @param logTerm 
+/// @return 当前server的任期与传入的是否相同
+bool Raft::matchLog(int logIndex, int logTerm)
+{
+    myAssert(logIndex >= m_lastSnapshotIncludeIndex && logIndex <= getLastLogIndex(),
+           format("不满足：logIndex{%d}>=rf.lastSnapshotIncludeIndex{%d}&&logIndex{%d}<=rf.getLastLogIndex{%d}",
+                  logIndex, m_lastSnapshotIncludeIndex, logIndex, getLastLogIndex()));
+    return logTerm == getLogTermFromLogIndex(logIndex);
 }

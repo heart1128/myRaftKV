@@ -2,7 +2,7 @@
  * @Author: heart1128 1020273485@qq.com
  * @Date: 2024-04-30 18:43:47
  * @LastEditors: heart1128 1020273485@qq.com
- * @LastEditTime: 2024-05-02 21:32:41
+ * @LastEditTime: 2024-05-03 12:11:06
  * @FilePath: /myRaftKv/src/common/include/util.h
  * @Description: 
  */
@@ -125,7 +125,7 @@ public:
     // 注意，这里没有用explic ，因为一会要用 = 进行隐式转换
     DeferClass(F&& f):m_func(std::forward<F>(f)){}
     DeferClass(const F& f) : m_func(f){}
-    ~DeferClass(){ m_func();}
+    ~DeferClass(){ m_func();}       // 析构触发
 
     // 这里需要禁止拷贝构造和重载= ，因为上面需要=调用构造隐式转换
     DeferClass(const DeferClass& e) = delete;

@@ -51,11 +51,9 @@ message RequestVoteReply{
 message InstallSnapshotRequest{
     int32 LeaderId = 1; // leader的id，因为是leader才会同步日志
     int32 Term = 2; // 任期
-    int32 LastIncludeIndex = 3; // 如果followr的index小于这个，followe的快照丢弃，全部使用leader的
-    int32 LastIncludedTerm = 4; // LastIncludeIndexd的任期
-    int32 offset = 5; // 这个块在快照中的偏移量
-    bytes Data = 6;  // 数据流
-    bool Done = 7; // 如果这个块是最后一个快就返回true, 不是最后一个快就要再发送
+    int32 LastSnapShotIncludeIndex = 3; // 如果followr的index小于这个，followe的快照丢弃，全部使用leader的
+    int32 LastSnapShotIncludeTerm = 4; // LastIncludeIndexd的任期
+    bytes Data = 5;  // 数据流
 }
 
 // 快照没有其他条件，无条件接受（符合Term的）

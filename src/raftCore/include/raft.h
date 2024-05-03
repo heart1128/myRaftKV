@@ -2,7 +2,7 @@
  * @Author: heart1128 1020273485@qq.com
  * @Date: 2024-05-02 14:25:12
  * @LastEditors: heart1128 1020273485@qq.com
- * @LastEditTime: 2024-05-02 18:15:03
+ * @LastEditTime: 2024-05-03 15:20:10
  * @FilePath: /myRaftKv/src/raftCore/include/raft.h
  * @Description: 
  */
@@ -15,6 +15,8 @@
 #include <boost/serialization/vector.hpp>
 #include <boost/serialization/serialization.hpp>
 #include <boost/any.hpp>
+
+#include <muduo/net/EventLoop.h>
 
 #include <iostream>
 #include <thread>
@@ -54,6 +56,7 @@ public:
 private:
     /*************          辅助变量          ********************/
     std::mutex m_mutex;
+    muduo::net::EventLoop m_eventLoop;  // 替代了usleep。使用了内部的timefd事件代替
     // 协程还未实现
     // std::unique_ptr<monsoon::IOManager> m_ioManager = nullptr;
 
@@ -76,8 +79,8 @@ private:
     int m_lastSnapshotIncludeIndex; // 快照中最后一个日志的index
     int m_lastSnapshotIncludeTerm; // 最后一个日志的term
 
-    std::vector<int> m_nextIndex;     // 日志同步进度的数组，里面记录的是已经同步的log
-    std::vector<int> m_matchIndex;   // leader已经同步，但是多数follower还没有确认的log的index
+    std::vector<int> m_nextIndex;     // 日志同步进度的数组，记录的是每个节点的index同步情况
+    std::vector<int> m_matchIndex;   // leader已经同步，但是多数follower还没有确认的log的index，每个节点的
 
     
     std::vector<std::shared_ptr<RaftRpcUtil>> m_peers; // 其他节点的rpc通信
@@ -91,6 +94,7 @@ public:
     /*************          raft间相关         ********************/
     // // leader
     void leaderHeartBeatTicker(); // leader检查是否需要发起心跳，有心跳定时
+    void HeartBeatTicker();         // 传入eventLoop的定时器函数
     void leaderSendSnapShot(int server); // 如果nextIndex在snapshot里面，就要发送snapshot给follower同步
     void leaderUpdateCommitIndex(); // leader更新commitIndex，就是同步的log有大多数follower回应了就更新
     void doHeartBeat();     // leader发起心跳

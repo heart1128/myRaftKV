@@ -2,14 +2,12 @@
  * @Author: heart1128 1020273485@qq.com
  * @Date: 2024-04-30 18:45:37
  * @LastEditors: heart1128 1020273485@qq.com
- * @LastEditTime: 2024-05-02 20:13:08
+ * @LastEditTime: 2024-05-03 14:07:27
  * @FilePath: /myRaftKv/src/common/include/config.h
  * @Description: 
  */
 #ifndef SRC_COMMON_INCLUDE_CONFIG_H
 #define SRC_COMMON_INCLUDE_CONFIG_H
-
-#include <muduo/net/EventLoop.h>
 
 // 开启debug，有日志
 const bool Debug = true;
@@ -21,6 +19,5 @@ const int ApplyInterval = 10 * debugMul;
 const int minRandomizedElectionTime = 300 * debugMul;  // ms
 const int maxRandomizedElectionTime = 500 * debugMul;  // ms
 
-static muduo::net::EventLoop eventLoop;
 
 #endif
