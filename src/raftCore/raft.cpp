@@ -806,6 +806,37 @@ void Raft::AppendEntries1(const raftRpcProtocol::AppendEntriesArgs *args, raftRp
 }
 
 /***********************************************************/
+/**                      持久化(snapshot)                  **/
+/***********************************************************/
+
+/// @brief 使用protobuf对log进行持久化，去掉了boost依赖，既然rpc用了ptotobuf，就统一。
+/// @return 序列化的持久化内容
+std::string Raft::perSistData()
+{
+    std::shared_ptr<Snapshot::PersistRaft> persistRaft = 
+                        std::make_shared<Snapshot::PersistRaft>();
+    // 里面用了嵌套数组，要释放内存，用智能指针方便点
+    persistRaft->set_currentterm(m_currentTerm);
+    persistRaft->set_votedfor(m_votedFor);
+    persistRaft->set_lastsnapshotincludeindex(m_lastSnapshotIncludeIndex);
+    persistRaft->set_lastsnapshotincludeterm(m_lastSnapshotIncludeTerm);
+    for(int i = 0; i < m_logs.size(); ++i)
+    {
+        persistRaft->mutable_logs()->Add(m_logs[i].SerializeAsString());    // 直接序列化到string加入bytes数组
+    }
+
+    std::string data;
+
+    if(!persistRaft->SerializeToString(&data))
+    {
+        myAssert(false, "在persistData中使用protobuf序列化失败！");
+    }
+
+    return data;
+}
+
+
+/***********************************************************/
 /**                     辅助函数                     **/
 /***********************************************************/
 
@@ -827,7 +858,6 @@ void Raft::getLastLogIndexAndTerm(int *lastLogIndex, int *lastLogTerm)
     }
 }
 
-
 /// @brief 分为logs空和非空
 /// @return 最后一个log的index
 int Raft::getLastLogIndex()
@@ -837,6 +867,17 @@ int Raft::getLastLogIndex()
 
     getLastLogIndexAndTerm(&lastLogIndex, &_);
     return lastLogIndex;
+}
+
+/// @brief 同上
+/// @return 最后一个log的term
+int Raft::getLastLogTerm()
+{
+    int _ = -1;
+    int lastLogTerm = -1;
+
+    getLastLogIndexAndTerm(&_, &lastLogTerm);
+    return lastLogTerm;
 }
 
 /// @brief 判断传入的log index和log term相比自己的是不是更新
@@ -856,7 +897,7 @@ bool Raft::UpToDate(int index, int term)
 /// @brief 持久化数据，具体数据看定义的
 void Raft::persist()
 {
-    auto data = getPerSistData();
+    auto data = perSistData();
     m_persister->SaveRaftState(data);       // 做法就是把data写入stringstream中
 }
 
@@ -910,4 +951,9 @@ bool Raft::matchLog(int logIndex, int logTerm)
            format("不满足：logIndex{%d}>=rf.lastSnapshotIncludeIndex{%d}&&logIndex{%d}<=rf.getLastLogIndex{%d}",
                   logIndex, m_lastSnapshotIncludeIndex, logIndex, getLastLogIndex()));
     return logTerm == getLogTermFromLogIndex(logIndex);
+}
+
+int Raft::getLogTermFromLogIndex(int logIndex)
+{
+    return 0;
 }

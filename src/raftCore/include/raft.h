@@ -2,7 +2,7 @@
  * @Author: heart1128 1020273485@qq.com
  * @Date: 2024-05-02 14:25:12
  * @LastEditors: heart1128 1020273485@qq.com
- * @LastEditTime: 2024-05-03 15:20:10
+ * @LastEditTime: 2024-05-03 20:42:05
  * @FilePath: /myRaftKv/src/raftCore/include/raft.h
  * @Description: 
  */
@@ -16,7 +16,7 @@
 #include <boost/serialization/serialization.hpp>
 #include <boost/any.hpp>
 
-#include <muduo/net/EventLoop.h>
+#include "snapshot.pb.h"
 
 #include <iostream>
 #include <thread>
@@ -124,7 +124,7 @@ public:
 
     void pushMsgToKvServer(ApplyMsg msg); // 写入一个数据到chan(lockQueue)
     void readPersist(std::string data);
-    std::string getPerSistData();
+    std::string perSistData();
 
     void Start(Op command, int* newLogIndex, int* newLogTerm, bool* isLeader); // 开始通信
 
@@ -156,7 +156,6 @@ public:
                         ::raftRpcProtocol::InstallSnapshotResponse *response, ::google::protobuf::Closure *done) override;
     void RequestVote(google::protobuf::RpcController *controller, const ::raftRpcProtocol::RequestVoteArgs *request,
                     ::raftRpcProtocol::RequestVoteReply *response, ::google::protobuf::Closure *done) override;
-
 };
 
 

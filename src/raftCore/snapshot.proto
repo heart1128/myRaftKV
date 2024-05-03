@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package Snapshot;
+
+message PersistRaft
+{
+    int32 CurrentTerm = 1;
+    int32 VotedFor    = 2;
+    int32 LastSnapshotIncludeIndex = 3;
+    int32 LastSnapshotIncludeTerm = 4;
+    repeated bytes Logs = 5;
+}
+
+
+// protoc -I=. --cpp_out=. snapshot.proto
