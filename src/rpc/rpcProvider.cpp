@@ -8,6 +8,7 @@
 #include <string>
 #include "rpcHeader.pb.h"
 #include "util.h"
+#include "config.h"
 
 
 /// @brief 添加服务通知，简单使用了一个map添加服务名和方法
@@ -76,7 +77,7 @@ void RpcProvider::Run(int nodeIndex, short port)
     // 3. 启动server
     muduo::net::InetAddress address(ip, port);
 
-    m_ptr_muduo_server = std::make_shared<muduo::net::TcpServer>(&m_eventLoop, address, "RpcProvider");
+    m_ptr_muduo_server = std::make_shared<muduo::net::TcpServer>(&eventLoop, address, "RpcProvider");
 
     // 连接回调, 还不知道传什么进去，按照函数参数占位
     m_ptr_muduo_server->setConnectionCallback(std::bind(&RpcProvider::OnConnection, this, std::placeholders::_1));
@@ -88,13 +89,13 @@ void RpcProvider::Run(int nodeIndex, short port)
     m_ptr_muduo_server->setThreadNum(4);
 
     m_ptr_muduo_server->start();
-    m_eventLoop.loop();
+    eventLoop.loop();
 }
 
 RpcProvider::~RpcProvider()
 {
     std::cout << "[func - RpcProvider::~RpcProvider()]: ip和port信息：" << m_ptr_muduo_server->ipPort() << std::endl;
-    m_eventLoop.quit(); // 整个服务停止
+    eventLoop.quit(); // 整个服务停止
 }
 
 /// @brief 这里是tpcconn连接之前的时间点，这个函数主要就是处理一下中间事件

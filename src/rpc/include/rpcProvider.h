@@ -2,7 +2,7 @@
  * @Author: heart1128 1020273485@qq.com
  * @Date: 2024-04-30 20:16:39
  * @LastEditors: heart1128 1020273485@qq.com
- * @LastEditTime: 2024-05-01 10:37:01
+ * @LastEditTime: 2024-05-02 19:52:09
  * @FilePath: /myRaftKv/src/rpc/include/rpcProvider.h
  * @Description: 
  */
@@ -38,7 +38,8 @@ public:
 
 private:
     // epoll
-    muduo::net::EventLoop m_eventLoop;
+    // 这个移动到util类了，因为raft也想用里面的定时器事件
+    //  muduo::net::EventLoop m_eventLoop;
     // tcp server
     std::shared_ptr<muduo::net::TcpServer> m_ptr_muduo_server;
 

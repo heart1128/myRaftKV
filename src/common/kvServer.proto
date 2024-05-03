@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package KVServer;
+
+message KVMessage{
+    bytes Operation = 1;
+    bytes Key = 2;
+    bytes Value= 3;
+    bytes ClientId = 4;
+    int32 RequestId = 5;
+}
