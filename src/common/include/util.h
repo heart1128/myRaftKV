@@ -2,7 +2,7 @@
  * @Author: heart1128 1020273485@qq.com
  * @Date: 2024-04-30 18:43:47
  * @LastEditors: heart1128 1020273485@qq.com
- * @LastEditTime: 2024-05-03 12:11:06
+ * @LastEditTime: 2024-05-03 21:21:51
  * @FilePath: /myRaftKv/src/common/include/util.h
  * @Description: 
  */
@@ -28,6 +28,9 @@ std::chrono::_V2::system_clock::time_point now()
 void DPrintf(const char* format, ...);
 void myAssert(bool condition, std::string message);
 
+// 线程睡眠，单位us
+void sleepNMilliseconds(int N) { std::this_thread::sleep_for(std::chrono::milliseconds(N)); };
+
 /***********************************************************/
 /**                     接收无限个参数输出 可变参数模板  **/
 /***********************************************************/
@@ -36,7 +39,8 @@ std::string format(const char* fomat_str, Args... args)
 {
     std::stringstream ss;
     // ((ss << args), 0) 写入参数到string流中，0中间是,号，确保整个表达式结果是0
-    // ((ss << args), 0)... 利用数组初始化的std::initializer会不断展开初始化，直到所有的args...都写入流中
+    // ((ss << args), 0)... 利用数组初始化的std::initializer会不断展开初始化
+    // C++17标准，(opertor)...  可变参数不断执行里面的操作
     int _[] = {((ss << args), 0)...};
     (void)_; // _[]声明未使用，所以这里做一个无效空操作让编译器不警告
     return ss.str();

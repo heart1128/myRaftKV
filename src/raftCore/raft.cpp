@@ -806,6 +806,43 @@ void Raft::AppendEntries1(const raftRpcProtocol::AppendEntriesArgs *args, raftRp
 }
 
 /***********************************************************/
+/**                      raft通用函数                       **/
+/***********************************************************/
+
+/// @brief 在raft初始化阶段就是detch线程，不断执行，作用是不断和kvserver通信，传输commond
+void Raft::applierTicker()
+{
+    while(true)
+    {
+        m_mutex.lock();
+
+        if(m_status == LEADER)
+        {
+            DPrintf("[Leader Raft::applierTicker() - raft{%d}]  m_lastApplied{%d}   m_commitIndex{%d}", m_me, m_lastApplied,
+                    m_commitIndex);
+        }
+
+        auto applyMsgs = getApplyLogs();
+
+        m_mutex.unlock();
+
+        if(!applyMsgs.empty())
+        {
+            DPrintf("[func- Raft::applierTicker()-raft{%d}] 向kvserver报告的applyMsgs的长度为：{%d}", m_me, applyMsgs.size());
+        }
+
+        for(auto& message : applyMsgs)
+        {
+            m_applyChan->Push(message);     // 所有通信的消息加入有锁队列发送
+        }
+
+        // 睡眠发送间隔，隔一段时间发送
+/// TODO 这些死循环的都可以用epoll + 协程处理的更好
+        sleepNMilliseconds(ApplyInterval);
+    }
+}
+
+/***********************************************************/
 /**                      持久化(snapshot)                  **/
 /***********************************************************/
 
@@ -921,9 +958,9 @@ void Raft::getPrevLogInfo(int server, int *preIndex, int *preTerm)
     *preTerm = m_logs[getSlicesIndexFromLogIndex(*preIndex)].logterm(); // 这里是因为当前的term不一定是上一条log的任期，所以要去找上一条的term
 }
 
-/// @brief 在上一次没有被做成快照的情况下，需要找它的term，因为当前term可能已经改变
-/// @param logIndex 
-/// @return 找到的上一的真实任期
+/// @brief 在上一次没有被做成快照的情况下，需要找它的index，因为当前index和logs是不对应的，前面保存了snapshot
+/// @param logIndex
+/// @return 找到的上一的真实下标
 int Raft::getSlicesIndexFromLogIndex(int logIndex)
 {
     // log的index必须是在快照之后的，不然就应该是快照的term
@@ -953,7 +990,35 @@ bool Raft::matchLog(int logIndex, int logTerm)
     return logTerm == getLogTermFromLogIndex(logIndex);
 }
 
+
+/// @brief 通过index找到term，通过log拿出来
+/// @param logIndex 
+/// @return 该index在logs中找到的term
 int Raft::getLogTermFromLogIndex(int logIndex)
 {
-    return 0;
+    // 首先保证longIndex是对的，不是在快照里面的
+    myAssert(logIndex >= m_lastSnapshotIncludeIndex,
+           format("[func-getSlicesIndexFromLogIndex-rf{%d}]  index{%d} < rf.lastSnapshotIncludeIndex{%d}", m_me,
+                  logIndex, m_lastSnapshotIncludeIndex));
+    
+    // 保证logIndex不超出当前最大的logsindex
+    int lastLogIndex = getLastLogIndex();
+    myAssert(logIndex <= lastLogIndex, format("[func-getSlicesIndexFromLogIndex-rf{%d}]  logIndex{%d} > lastLogIndex{%d}",
+                                            m_me, logIndex, lastLogIndex));
+                                        
+    if(logIndex == m_lastSnapshotIncludeIndex)
+    {
+        return m_lastSnapshotIncludeTerm;
+    }
+
+
+    return m_logs[getSlicesIndexFromLogIndex(logIndex)].logterm();
+}
+
+
+/// @brief 获取raft的状态机（日志logs的大小）
+/// @return logs的长度
+int Raft::GetRaftStateSize()
+{
+    return m_persister->GetRaftStateSize();
 }

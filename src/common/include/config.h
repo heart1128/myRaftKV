@@ -2,7 +2,7 @@
  * @Author: heart1128 1020273485@qq.com
  * @Date: 2024-04-30 18:45:37
  * @LastEditors: heart1128 1020273485@qq.com
- * @LastEditTime: 2024-05-03 14:07:27
+ * @LastEditTime: 2024-05-03 21:20:10
  * @FilePath: /myRaftKv/src/common/include/config.h
  * @Description: 
  */
@@ -18,6 +18,8 @@ const int ApplyInterval = 10 * debugMul;
 // 超时随机生成时间，这里是设置最大最小
 const int minRandomizedElectionTime = 300 * debugMul;  // ms
 const int maxRandomizedElectionTime = 500 * debugMul;  // ms
+// 发送数据给kvserver的间隔
+const int ApplyInterval = 10 * debugMul;   
 
 
 #endif

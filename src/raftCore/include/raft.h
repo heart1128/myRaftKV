@@ -2,7 +2,7 @@
  * @Author: heart1128 1020273485@qq.com
  * @Date: 2024-05-02 14:25:12
  * @LastEditors: heart1128 1020273485@qq.com
- * @LastEditTime: 2024-05-03 20:42:05
+ * @LastEditTime: 2024-05-03 21:25:09
  * @FilePath: /myRaftKv/src/raftCore/include/raft.h
  * @Description: 
  */
@@ -94,9 +94,9 @@ public:
     /*************          raft间相关         ********************/
     // // leader
     void leaderHeartBeatTicker(); // leader检查是否需要发起心跳，有心跳定时
-    void HeartBeatTicker();         // 传入eventLoop的定时器函数
+    // void HeartBeatTicker();         // 传入eventLoop的定时器函数, 本来打算用muduo的定时器替代睡眠
     void leaderSendSnapShot(int server); // 如果nextIndex在snapshot里面，就要发送snapshot给follower同步
-    void leaderUpdateCommitIndex(); // leader更新commitIndex，就是同步的log有大多数follower回应了就更新
+    // void leaderUpdateCommitIndex(); // leader更新commitIndex，就是同步的log有大多数follower回应了就更新，在sendAppendEntries做了，废弃
     void doHeartBeat();     // leader发起心跳
     bool sendAppendEntries(int server, std::shared_ptr<raftRpcProtocol::AppendEntriesArgs> args, // 发送心跳后，对心跳的回复处理
                          std::shared_ptr<raftRpcProtocol::AppendEntriesReply> reply, std::shared_ptr<int> appendNums);
@@ -132,7 +132,7 @@ public:
     // // snapshot
     void InstallSnapshot(const raftRpcProtocol::InstallSnapshotRequest *args,
                        raftRpcProtocol::InstallSnapshotResponse *reply);    // 制作快照
-    bool CondInstallSnalshot(int lastIncludeTerm, int lastIncludeIndex, std::string snapshot);         // 写快照
+    bool CondInstallSnapshot(int lastIncludeTerm, int lastIncludeIndex, std::string snapshot);         // 写快照
             // index表示快照保存到了哪条log， snapshot是旧的快照。
     void Snapshot(int index, std::string snapshot); //把安装到快照里的日志抛弃，然后做新的快照，更新快照的下标。每个节点都主动更新。
     // // state
