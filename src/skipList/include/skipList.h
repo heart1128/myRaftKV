@@ -2,7 +2,7 @@
  * @Author: heart1128 1020273485@qq.com
  * @Date: 2024-05-04 14:35:11
  * @LastEditors: heart1128 1020273485@qq.com
- * @LastEditTime: 2024-05-04 20:33:05
+ * @LastEditTime: 2024-05-04 20:34:53
  * @FilePath: /myRaftKv/src/skipList/include/skipList.h
  * @Description: 
  */
@@ -221,8 +221,8 @@ inline SkipList<K, V>::~SkipList()
     {
         clear(m_header->forward[0]);
     }
-    // delete m_header;         
-    // m_header = nullptr;
+    delete m_header;         
+    m_header = nullptr;
 }
 
 template <typename K, typename V>
