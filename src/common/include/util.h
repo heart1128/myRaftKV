@@ -2,7 +2,7 @@
  * @Author: heart1128 1020273485@qq.com
  * @Date: 2024-04-30 18:43:47
  * @LastEditors: heart1128 1020273485@qq.com
- * @LastEditTime: 2024-05-03 21:21:51
+ * @LastEditTime: 2024-05-04 18:03:58
  * @FilePath: /myRaftKv/src/common/include/util.h
  * @Description: 
  */
@@ -18,18 +18,22 @@
 #include <ctime>
 #include <iomanip>
 #include <random>
+#include <thread>
+#include <queue>
+#include <condition_variable>
+
+/////// 在头文件中不要实现方法，除非是模版，否则多个函数使用了会引起编译重定义问题
+// 因为在头文件中定义了编译能通过，但是链接的时候就会出现不知道找哪个定义引起多重定义问题
 
 // 当前时间
-std::chrono::_V2::system_clock::time_point now()
-{
-    return std::chrono::high_resolution_clock::now();
-}
+std::chrono::_V2::system_clock::time_point now();
+
 // 日志保存
 void DPrintf(const char* format, ...);
 void myAssert(bool condition, std::string message);
 
 // 线程睡眠，单位us
-void sleepNMilliseconds(int N) { std::this_thread::sleep_for(std::chrono::milliseconds(N)); };
+void sleepNMilliseconds(int N); 
 
 /***********************************************************/
 /**                     接收无限个参数输出 可变参数模板  **/
@@ -50,15 +54,8 @@ std::string format(const char* fomat_str, Args... args)
 /**                     获取随机事件，用来注册follower的超时时间   **/
 /***********************************************************/
 
-std::chrono::microseconds getRandomizeElectionTimeout()
-{
-    // linux下使用
-   std::random_device rd;
-   std::mt19937 rng(rd());
-   // 用正态分布生成
-   std::uniform_int_distribution<int> dist(minRandomizedElectionTime, maxRandomizedElectionTime);
-   return std::chrono::milliseconds(dist(rng));
-}
+std::chrono::microseconds getRandomizeElectionTimeout();
+
 
 /***********************************************************/
 /**                     kvserver和raft交互类            **/

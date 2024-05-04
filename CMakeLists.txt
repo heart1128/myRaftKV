@@ -14,6 +14,7 @@ set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 # 设置头文件（是头文件）搜索路径，也就是g++ 的-I
 include_directories(${PROJECT_SOURCE_DIR}/src/common/include)
 include_directories(${PROJECT_SOURCE_DIR}/src/rpc/include)
+include_directories(${PROJECT_SOURCE_DIR}/src/skipList/include)
 include_directories(${PROJECT_SOURCE_DIR}/test_cases)
 
 # 设置项目库文件搜索路径 -L（每个编译出来之后，依赖都在前一个编译的lib找，所以上面要有顺序）

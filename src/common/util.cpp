@@ -2,7 +2,7 @@
  * @Author: heart1128 1020273485@qq.com
  * @Date: 2024-04-30 18:43:36
  * @LastEditors: heart1128 1020273485@qq.com
- * @LastEditTime: 2024-05-02 21:24:58
+ * @LastEditTime: 2024-05-04 18:04:07
  * @FilePath: /myRaftKv/src/common/util.cpp
  * @Description: 
  */
@@ -13,12 +13,29 @@
 #include <cstdio>
 #include <cstdarg>
 #include <functional>
-#include <queue>
-#include <condition_variable>
 #include <mutex>
-#include <thread>
 #include <chrono>
 
+
+void sleepNMilliseconds(int N) 
+{ 
+  std::this_thread::sleep_for(std::chrono::milliseconds(N)); 
+};
+
+std::chrono::microseconds getRandomizeElectionTimeout()
+{
+    // linux下使用
+   std::random_device rd;
+   std::mt19937 rng(rd());
+   // 用正态分布生成
+   std::uniform_int_distribution<int> dist(minRandomizedElectionTime, maxRandomizedElectionTime);
+   return std::chrono::milliseconds(dist(rng));
+}
+
+std::chrono::_V2::system_clock::time_point now()
+{
+    return std::chrono::high_resolution_clock::now();
+}
 
 /***********************************************************/
 /**                    自定义断言                       **/
@@ -52,5 +69,6 @@ void DPrintf(const char *format, ...)
         va_end(args);
     }
 }
+
 
 

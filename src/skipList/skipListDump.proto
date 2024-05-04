@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+package SkipListDumpSerialization;
+
+message KVDump{
+    repeated bytes Key = 1;
+    repeated bytes Value = 2;
+}
+
+// protoc -I=. --cpp_out=. skipListDump.proto

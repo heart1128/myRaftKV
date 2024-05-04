@@ -1021,4 +1021,4 @@ int Raft::getLogTermFromLogIndex(int logIndex)
 int Raft::GetRaftStateSize()
 {
     return m_persister->GetRaftStateSize();
-}
+} 
