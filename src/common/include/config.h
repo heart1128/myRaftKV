@@ -2,9 +2,9 @@
  * @Author: heart1128 1020273485@qq.com
  * @Date: 2024-04-30 18:45:37
  * @LastEditors: heart1128 1020273485@qq.com
- * @LastEditTime: 2024-05-04 14:46:24
+ * @LastEditTime: 2024-05-08 20:18:14
  * @FilePath: /myRaftKv/src/common/include/config.h
- * @Description: 
+ * @Description:
  */
 #ifndef SRC_COMMON_INCLUDE_CONFIG_H
 #define SRC_COMMON_INCLUDE_CONFIG_H
@@ -23,7 +23,9 @@ const int HeartBeatTimeout = 25 * debugMul;
 const int minRandomizedElectionTime = 300 * debugMul;  // ms
 const int maxRandomizedElectionTime = 500 * debugMul;  // ms
 // 发送数据给kvserver的间隔
-const int ApplyInterval = 10 * debugMul;   
+const int ApplyInterval = 10 * debugMul;
+// 消息队列超时设置
+const int CONSENSUS_TIMEOUT = 500 * debugMul;  // ms
 
 
 

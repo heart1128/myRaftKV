@@ -2,9 +2,9 @@
  * @Author: heart1128 1020273485@qq.com
  * @Date: 2024-04-30 18:43:47
  * @LastEditors: heart1128 1020273485@qq.com
- * @LastEditTime: 2024-05-04 18:03:58
+ * @LastEditTime: 2024-05-08 20:19:47
  * @FilePath: /myRaftKv/src/common/include/util.h
- * @Description: 
+ * @Description:
  */
 
 #ifndef SRC_COMMON_INCLUDE_UTIL_H
@@ -33,7 +33,7 @@ void DPrintf(const char* format, ...);
 void myAssert(bool condition, std::string message);
 
 // 线程睡眠，单位us
-void sleepNMilliseconds(int N); 
+void sleepNMilliseconds(int N);
 
 /***********************************************************/
 /**                     接收无限个参数输出 可变参数模板  **/
@@ -56,6 +56,14 @@ std::string format(const char* fomat_str, Args... args)
 
 std::chrono::microseconds getRandomizeElectionTimeout();
 
+/***********************************************************/
+/**                    kvserver reply err to clerk        **/
+/***********************************************************/
+
+const std::string OK = "OK";
+const std::string ErrNoKey = "ErrNoKey";
+const std::string ErrWrongLeader = "ErrWrongLeader";
+
 
 /***********************************************************/
 /**                     kvserver和raft交互类            **/
@@ -75,7 +83,7 @@ public:
     /// @brief 序列化到string，发送的
     std::string asString() {
         std::string serialize;
-        
+
         m_KvMessage.set_operation(m_message.Operation.c_str());
         m_KvMessage.set_key(m_message.Key.c_str());
         m_KvMessage.set_value(m_message.Value.c_str());
@@ -90,8 +98,8 @@ public:
         return serialize;
     }
     /// @brief  反序列化到message
-    /// @param message 
-    /// @return 
+    /// @param message
+    /// @return
     bool parseFormString(std::string message)
     {
         if(!m_KvMessage.ParseFromString(message))
@@ -108,7 +116,7 @@ public:
         return true;
     }
 
-private:
+public:
     Message m_message;
     KVServer::KVMessage m_KvMessage;
 };
@@ -118,7 +126,7 @@ private:
 /***********************************************************/
 // 延迟类，在函数的return之后执行
 /// @brief 原理就是保存函数，宏定义声明对象，等待函数退出解析函数执行
-/// @tparam F 
+/// @tparam F
 template <class F>
 class DeferClass{
 public:
@@ -147,12 +155,12 @@ private:
 /**                     有锁队列                       **/
 /***********************************************************/
 /// @brief 异步写日志的队列，有锁的，用queue模拟的
-/// @tparam T 
+/// @tparam T
 template<typename T>
 class LockQueue{
 public:
     /// @brief 多个worker线程会同时写，要加锁。
-    /// @param data 
+    /// @param data
     void Push(const T& data)
     {
         std::lock_guard<std::mutex> lock(m_mutex);
@@ -178,10 +186,10 @@ public:
         return data;
     }
 
-    /// @brief 定时取数据，设置超时时间
-    /// @param timeout 
-    /// @param ResData 
-    /// @return 是否拿到了data
+    /// @brief 定时取数据，设置超时时间,get或者put的时候都要判断，如果超时了就判断这个命令超时
+    /// @param timeout
+    /// @param ResData
+    /// @return 是否拿到了data，超时返回false，不超时返回true
     bool TimeOutPop(int timeout, T* ResData)
     {
         std::unique_lock<std::mutex> lock(m_mutex);

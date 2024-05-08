@@ -2,9 +2,9 @@
  * @Author: heart1128 1020273485@qq.com
  * @Date: 2024-05-02 14:25:12
  * @LastEditors: heart1128 1020273485@qq.com
- * @LastEditTime: 2024-05-03 21:25:09
+ * @LastEditTime: 2024-05-08 20:19:04
  * @FilePath: /myRaftKv/src/raftCore/include/raft.h
- * @Description: 
+ * @Description:
  */
 #ifndef SRC_RAFTRPCPROTO_INCLUDE_RAFT_H
 #define SRC_RAFTRPCPROTO_INCLUDE_RAFT_H
@@ -34,13 +34,13 @@
 // 网络状态标识，如果出现网络分区设置标志位discinnected, 网络正常就是AppNormal
 //  const 变量的初始化可以推迟到运行时进行。 constexpr 变量必须在编译时进行初始化
 // const表示只读， constexper表示常量
-constexpr int Disconnected = 0; 
+constexpr int Disconnected = 0;
 constexpr int AppNormal = 1;
 
 /***********************************************************/
 /**                     raft投票状态                        **/
 /***********************************************************/
-constexpr int Killed = 0;   
+constexpr int Killed = 0;
 constexpr int Voted = 1;   // 节点本轮已经投过票了
 constexpr int Expire = 2;  // 投票的（消息 or 竞选者）过期了
 constexpr int Normal = 3;   // 正常投票状态
@@ -82,7 +82,7 @@ private:
     std::vector<int> m_nextIndex;     // 日志同步进度的数组，记录的是每个节点的index同步情况
     std::vector<int> m_matchIndex;   // leader已经同步，但是多数follower还没有确认的log的index，每个节点的
 
-    
+
     std::vector<std::shared_ptr<RaftRpcUtil>> m_peers; // 其他节点的rpc通信
     std::shared_ptr<Persister> m_persister; // 持久化
     std::vector<raftRpcProtocol::LogEntry> m_logs; // 这个是模拟状态机，里面的节点在proto定义了一个三元组<term, index, commond>
@@ -114,7 +114,7 @@ public:
     void getLastLogIndexAndTerm(int *lastLogIndex, int *lastLogTerm);
     int getLogTermFromLogIndex(int logIndex);
     bool matchLog(int logIndex, int logTerm); // 对应的index的log是不是匹配的
-    void applierTicker();    // 定期向状态机提交日志
+    void applierTicker();    // 定期向kvserver的chan送入未commit的消息
 
     /*************          client通信相关         ********************/
     std::vector<ApplyMsg> getApplyLogs();

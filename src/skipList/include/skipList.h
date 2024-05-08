@@ -2,9 +2,9 @@
  * @Author: heart1128 1020273485@qq.com
  * @Date: 2024-05-04 14:35:11
  * @LastEditors: heart1128 1020273485@qq.com
- * @LastEditTime: 2024-05-04 20:33:05
+ * @LastEditTime: 2024-05-08 20:22:36
  * @FilePath: /myRaftKv/src/skipList/include/skipList.h
- * @Description: 
+ * @Description:
  */
 #ifndef SRC_SKIPLIST_INCLUDE_SKIPLIST_H
 #define SRC_SKIPLIST_INCLUDE_SKIPLIST_H
@@ -29,7 +29,7 @@
 template<typename K, typename V>
 class SkipListNode{
 public:
-    typedef std::shared_ptr<SkipListNode<K, V>> ptr;    
+    typedef std::shared_ptr<SkipListNode<K, V>> ptr;
 public:
     SkipListNode(){}
     SkipListNode(K k, V v, int level);
@@ -47,7 +47,7 @@ public:
     //     SkipListNode<K, V> *forward;    // 指向不同层级下一个Node的指针
     //     unsigned log nodeLevel;         // 当前node的层级
     // }level[];
-    
+
     SkipListNode<K, V> **forward;          // 每个节点都会放在每一层，相当于*forward[level]指针数组，每一层存放一个指向下一个的指针
     int nodeLevel;
 
@@ -117,7 +117,7 @@ inline void SkipListDump<K, V>::insert(const SkipListNode<K, V> &node)
 template <typename K, typename V>
 inline void SkipListDump<K, V>::serializeToString(std::string &data)
 {
-    std::shared_ptr<SkipListDumpSerialization::KVDump> kvDump = 
+    std::shared_ptr<SkipListDumpSerialization::KVDump> kvDump =
                         std::make_shared<SkipListDumpSerialization::KVDump>();
     for(int i = 0; i < m_keyDump.size(); ++i)
     {
@@ -135,9 +135,9 @@ inline void SkipListDump<K, V>::serializeToString(std::string &data)
 template <typename K, typename V>
 inline void SkipListDump<K, V>::loadFromSerializedString(const std::string &data)
 {
-    std::shared_ptr<SkipListDumpSerialization::KVDump> kvDump = 
+    std::shared_ptr<SkipListDumpSerialization::KVDump> kvDump =
                         std::make_shared<SkipListDumpSerialization::KVDump>();
-    
+
     if(!kvDump->ParseFromString(data))
     {
         std::cout << "序列化解析失败！" << std::endl;
@@ -181,7 +181,7 @@ private:
     int m_maxLevel;
     int m_skipListLevel;
 
-    SkipListNode<K, V>* m_header;               
+    SkipListNode<K, V>* m_header;
     // std::shared_ptr<SkipListNode<K, V>> m_header;               // 管理整个跳表 层数数组
 
     std::ofstream m_fileWriter;
@@ -221,8 +221,8 @@ inline SkipList<K, V>::~SkipList()
     {
         clear(m_header->forward[0]);
     }
-    // delete m_header;         
-    // m_header = nullptr;
+    delete m_header;
+    m_header = nullptr;
 }
 
 template <typename K, typename V>
@@ -284,10 +284,10 @@ level 0         1    4   9 10         30   40  | 50 |  60      70       100
 */
 
 /// @brief 寻找每一层应该插入的位置，每一层都要插入这个新节点，如果是已经存在的key就不插入
-/// @tparam K 
-/// @tparam V 
-/// @param key 
-/// @param value 
+/// @tparam K
+/// @tparam V
+/// @param key
+/// @param value
 /// @return 返回1表示key已存在，返回0表示插入成功
 template <typename K, typename V>
 inline int SkipList<K, V>::insertElement(K key, V value)
@@ -296,7 +296,7 @@ inline int SkipList<K, V>::insertElement(K key, V value)
 
     SkipListNode<K, V>* current = m_header;             // 从header开始查找
 
-    SkipListNode<K, V>* update[m_maxLevel + 1];         // 记录每一层应该插入的节点（prev节点）    
+    SkipListNode<K, V>* update[m_maxLevel + 1];         // 记录每一层应该插入的节点（prev节点）
     memset(update, 0, sizeof(SkipListNode<K, V>*) * (m_maxLevel + 1));
 
     /// 1. 寻找每层要插入的位置
@@ -369,10 +369,10 @@ inline void SkipList<K, V>::displayList()
 }
 
 /// @brief 根据key和value每层查找元素
-/// @tparam K 
-/// @tparam V 
-/// @param key 
-/// @param value 
+/// @tparam K
+/// @tparam V
+/// @param key
+/// @param value
 /// @return 是否找到
 template <typename K, typename V>
 inline bool SkipList<K, V>::searchElement(K key, V &value)
@@ -408,7 +408,7 @@ template <typename K, typename V>
 inline void SkipList<K, V>::deleteElement(K key)
 {
     std::lock_guard<std::mutex> lock(m_mutex);
-    
+
     SkipListNode<K, V>* current = m_header;
     SkipListNode<K, V>* update[m_skipListLevel + 1];        // 删除不添加层，用当前层数就行
     memset(update, 0, sizeof(SkipListNode<K, V> *) * (m_skipListLevel + 1));
@@ -433,7 +433,7 @@ inline void SkipList<K, V>::deleteElement(K key)
         {
             if(update[i]->forward[i] != current)            // 这种情况就是随机插入的时候到这层停止了，（插入的时候一定会从0层开始到randomLevel）
                 break;                                      // 所以这个层就是randmoLevel层，再上面的层都是没有插入的层
-            
+
             update[i]->forward[i] = current->forward[i];    // 等同于链表节点删除 prev->next = cur->next
         }
 
@@ -450,10 +450,10 @@ inline void SkipList<K, V>::deleteElement(K key)
 }
 
 /// @brief 和insert的区别就是如果已经存在key，就变更值不是不插入(这里的操作是先找，找到删除重新插入)
-/// @tparam K 
-/// @tparam V 
-/// @param key 
-/// @param value 
+/// @tparam K
+/// @tparam V
+/// @param key
+/// @param value
 template <typename K, typename V>
 inline void SkipList<K, V>::insertSetElement(K &key, V &value)
 {
@@ -466,8 +466,8 @@ inline void SkipList<K, V>::insertSetElement(K &key, V &value)
 }
 
 /// @brief 返回跳表中元素的个数
-/// @tparam K 
-/// @tparam V 
+/// @tparam K
+/// @tparam V
 /// @return 返回跳表中元素的个数
 template <typename K, typename V>
 inline int SkipList<K, V>::size()
@@ -476,36 +476,36 @@ inline int SkipList<K, V>::size()
 }
 
 /// @brief 输入 key:value的字符串解析进行查找
-/// @tparam K 
-/// @tparam V 
-/// @param str 
-/// @param key 
-/// @param value 
+/// @tparam K
+/// @tparam V
+/// @param str
+/// @param key
+/// @param value
 template <typename K, typename V>
 inline void SkipList<K, V>::getKeyAndValueFromString(const std::string &str, std::string &key, std::string &value)
 {
     if(!isValidString(str))
         return;
-    
+
     int delimiterIndex = str.find(delimiter);
     key = str.substr(0, delimiterIndex);
     value = str.substr(delimiterIndex, str.size());
 }
 
 /// @brief 单纯的检查字符串是不是空，有没有":"分隔符
-/// @tparam K 
-/// @tparam V 
-/// @param str 
+/// @tparam K
+/// @tparam V
+/// @param str
 /// @return 字符串解析是否正确
 template <typename K, typename V>
 inline bool SkipList<K, V>::isValidString(const std::string &str)
 {
     if(str.empty())
         return false;
-    
+
     if(str.find(delimiter) == str.npos)
         return false;
-    
+
     return true;
 }
 
@@ -540,6 +540,7 @@ inline void SkipList<K, V>::loadFile(const std::string &dumpStr)
     }
 
     SkipListDump<K, V> dumper;
+    dumper.loadFromSerializedString(dumpStr);
 
     for(int i = 0; i < dumper.m_keyDump.size(); ++i)
     {
@@ -548,4 +549,3 @@ inline void SkipList<K, V>::loadFile(const std::string &dumpStr)
 }
 
 #endif
-
