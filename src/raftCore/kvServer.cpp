@@ -2,7 +2,7 @@
  * @Author: heart1128 1020273485@qq.com
  * @Date: 2024-05-04 20:50:15
  * @LastEditors: heart1128 1020273485@qq.com
- * @LastEditTime: 2024-05-08 20:23:28
+ * @LastEditTime: 2024-05-09 11:35:05
  * @FilePath: /myRaftKv/src/raftCore/kvServer.cpp
  * @Description:
  */
@@ -407,7 +407,7 @@ void KvServer::PutAppend(const raftKVRpcProctoc::PutAppendArgs *args, raftKVRpcP
 /**                      kvserver消息处理                   **/
 /***********************************************************/
 
-/// @brief 等待raft传来的消息，不是detech进程，是join
+/// @brief 等待raft传来的消息，不是detech进程，是join，处理raft执行的操作到数据库
 void KvServer::ReadRaftApplyCommandLoop()
 {
     while(true)

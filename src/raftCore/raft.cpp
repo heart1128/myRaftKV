@@ -3,6 +3,7 @@
 #include <muduo/net/EventLoop.h>
 #include "config.h"
 
+
 /// @brief 初始化一个raft服务的所有内容
 /// @param peers     所有节点的rpc通信
 /// @param me        标识自己，不给自己通信
@@ -682,6 +683,15 @@ void Raft::AppendEntries(google::protobuf::RpcController *controller, const ::ra
     done->Run();
 }
 
+void Raft::InstallSnapshot(google::protobuf::RpcController *controller, 
+                        const ::raftRpcProtocol::InstallSnapshotRequest *request, 
+                        ::raftRpcProtocol::InstallSnapshotResponse *response, 
+                        ::google::protobuf::Closure *done)
+{
+    this->InstallSnapshot(request, response);
+    done->Run();
+}
+
 /// @brief 处理log，follower加入leader同步的log
 /// @param args
 /// @param reply
@@ -872,6 +882,7 @@ std::string Raft::perSistData()
     return data;
 }
 
+
 bool Raft::CondInstallSnapshot(int lastIncludeTerm, int lastIncludeIndex, std::string snapshot)
 {
     return true;
@@ -922,6 +933,107 @@ void Raft::Snapshot(int index, std::string snapshot)
             format("len(rf.logs){%d} + rf.lastSnapshotIncludeIndex{%d} != lastLogjInde{%d}", m_logs.size(),
                     m_lastSnapshotIncludeIndex, lastLogIndex));
 
+}
+
+/// @brief  follower收到leader的snapshot同步做出的动作，判定是丢弃自己的全部接收还是截断
+/// @param args 
+/// @param reply 
+void Raft::InstallSnapshot(const raftRpcProtocol::InstallSnapshotRequest *args, raftRpcProtocol::InstallSnapshotResponse *reply)
+{
+    std::lock_guard<std::mutex> lock(m_mutex);
+
+    // 1. 对方任期比自己的低，不接收
+    if(args->term() < m_currentTerm)
+    {
+        reply->set_term(m_currentTerm);
+        return;
+    }
+
+    // 2. 任期大于等于自己，都要接受
+        // 发来的快照如果包含了现在的lastLogIndex，直接丢失全部覆盖
+        // 不包含全部，把snaposhot包含的部分全部删除
+
+    if(args->term() > m_currentTerm)        // 三变要的
+    {
+        m_currentTerm = args->term();
+        m_votedFor = -1;
+        m_status = FOLLOWER;
+        persist();      
+    }
+
+    // 3. 这里是任期相同的
+    m_status = FOLLOWER;
+    m_lastResetElectionTime = now();       // 选举计时器
+
+    if(args->lastsnapshotincludeindex() <= m_lastSnapshotIncludeIndex)
+    {
+        // 快照数据比自己的快照还旧，没必要保存了
+        return;
+    }
+
+    auto lastLogIndex = getLastLogIndex();
+
+    if(lastLogIndex > args->lastsnapshotincludeindex())     // 当前数据大于发来的快照，要截断到快照位置，因为做成快照了
+    {
+        m_logs.erase(m_logs.begin(), m_logs.begin() + getSlicesIndexFromLogIndex(args->lastsnapshotincludeindex()) + 1);
+    }
+    else
+    {
+        std::vector<raftRpcProtocol::LogEntry> temp;        // 如果发来的快照包含了自己最新的日志，就全部覆盖
+        m_logs.swap(temp);
+    }
+
+    m_commitIndex = std::max(m_commitIndex, args->lastsnapshotincludeindex());  // 如果快照是上面的覆盖情况，那就是commit设置
+    m_lastApplied = std::max(m_lastApplied, args->lastsnapshotincludeindex());
+
+    m_lastSnapshotIncludeIndex = args->lastsnapshotincludeindex();
+    m_lastSnapshotIncludeTerm = args->lastsnapshotincludeterm();
+
+    reply->set_term(m_currentTerm);
+
+    ApplyMsg msg;       // raft执行的数据，都要交给kvServer和跳表通信，通过chan交互
+    msg.SnapshotVaild = true;
+    msg.Snapshot = args->data();
+    msg.SnapshotTerm = args->lastsnapshotincludeterm();
+    msg.SnapshotIndex = args->lastsnapshotincludeindex();
+
+    m_applyChan->Push(msg);
+    std::thread(&Raft::pushMsgToKvServer, this, msg).detach();
+
+    // 快照持久化
+    m_persister->Save(perSistData(), args->data());
+}
+
+/// @brief  初始化的时候读取persist的内容，加载到raft，要反序列化
+/// @param data persist类从硬盘中读取的raft序列化内容
+void Raft::readPersist(std::string data)
+{
+    if(data.empty())
+    {
+        return;
+    }
+
+    std::shared_ptr<Snapshot::PersistRaft> persistRaft = 
+                    std::make_shared<Snapshot::PersistRaft>();
+                
+    if(!persistRaft->ParseFromString(data))
+    {
+        std::cout << __LINE__ << " readPersist() protobuf解析失败" << std::endl;
+        return; 
+    }
+
+    m_currentTerm = persistRaft->currentterm();
+    m_votedFor = persistRaft->votedfor();
+    m_lastSnapshotIncludeIndex = persistRaft->lastsnapshotincludeindex();
+    m_lastSnapshotIncludeTerm = persistRaft->lastsnapshotincludeterm();
+    m_logs.clear();
+
+    for(int i = 0; i < persistRaft->logs_size(); ++i)
+    {
+        raftRpcProtocol::LogEntry logEntry;
+        logEntry.ParseFromString(persistRaft->logs(i));
+        m_logs.emplace_back(logEntry);
+    }
 }
 
 /***********************************************************/
@@ -980,6 +1092,14 @@ void Raft::GetState(int *term, bool *isLeader)
     *term = m_currentTerm;
     *isLeader = (m_status == LEADER);
 }
+
+/// @brief 线程单独执行，有msg就立马写入，因为内部是一个有锁队列，自动阻塞
+/// @param msg 
+void Raft::pushMsgToKvServer(ApplyMsg msg)
+{
+    m_applyChan->Push(msg);
+}
+
 
 /// @brief 返回没有提交的日志
 /// @return 返回从客户端最后加入leader的日志到最后commit的日志，也就是
