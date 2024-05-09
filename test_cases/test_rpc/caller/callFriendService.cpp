@@ -2,7 +2,7 @@
  * @Author: heart1128 1020273485@qq.com
  * @Date: 2024-05-01 12:04:19
  * @LastEditors: heart1128 1020273485@qq.com
- * @LastEditTime: 2024-05-02 16:15:18
+ * @LastEditTime: 2024-05-09 21:11:57
  * @FilePath: /myRaftKv/test_cases/test_rpc/caller/callFriendService.cpp
  * @Description: 
  */
@@ -10,6 +10,7 @@
 // Created by swx on 23-12-21.
 //
 #include <iostream>
+
 
 // #include "mprpcapplication.h"
 #include "test_rpc/friend.pb.h"
@@ -23,9 +24,12 @@ int main(int argc, char **argv) {
   std::string ip = "172.17.0.2";
   short port = 7788;
 
-  // 演示调用远程发布的rpc方法Login
-  fixbug::FiendServiceRpc_Stub stub(
-      new RpcChannel(ip, port, true));  //注册进自己写的channel类，channel类用于自定义发送格式和负责序列化等操作
+
+  fixbug::FiendServiceRpc_Stub stub(new RpcChannel(ip, port, true));
+
+  // // 演示调用远程发布的rpc方法Login
+  // fixbug::FiendServiceRpc_Stub stub(
+  //     new RpcChannel(ip, port, true));  //注册进自己写的channel类，channel类用于自定义发送格式和负责序列化等操作
   // rpc方法的请求参数
   fixbug::GetFriendsListRequest request;
   request.set_userid(1000);
@@ -34,11 +38,12 @@ int main(int argc, char **argv) {
   // 发起rpc方法的调用,消费这的stub最后都会调用到channel的 call_method方法  同步的rpc调用过程  MprpcChannel::callmethod
   MprpcController controller;
   //長連接測試 ，發送10次請求
-  int count = 10;
+  int count = 4;
   while (count--) {
     std::cout << " 倒数" << count << "次发起RPC请求" << std::endl;
 
     stub.GetFriendsList(&controller, &request, &response, nullptr);
+
     // RpcChannel->RpcChannel::callMethod 集中来做所有rpc方法调用的参数序列化和网络发送
 
     // 一次rpc调用完成，读调用的结果

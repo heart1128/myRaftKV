@@ -2,7 +2,7 @@
  * @Author: heart1128 1020273485@qq.com
  * @Date: 2024-04-30 18:19:16
  * @LastEditors: heart1128 1020273485@qq.com
- * @LastEditTime: 2024-05-01 15:19:55
+ * @LastEditTime: 2024-05-09 21:29:31
  * @FilePath: /myRaftKv/src/rpc/rpcChannel.cpp
  * @Description: 
  */
@@ -52,6 +52,8 @@ m_ip(ip), m_port(port), m_clientFd(-1)
 /// @param request 
 /// @param response 
 /// @param done 
+
+
 void RpcChannel::CallMethod(const google::protobuf::MethodDescriptor *method, 
                             google::protobuf::RpcController *controller, 
                             const google::protobuf::Message *request, 
@@ -84,37 +86,39 @@ void RpcChannel::CallMethod(const google::protobuf::MethodDescriptor *method,
         {
             DPrintf("[func-MprpcChannel::CallMethod]连接ip：{%s} port{%d}成功", m_ip.c_str(), m_port);
         }
+    }
 
-        // 1. proto拿到服务描述,描述能调用Message Factoryc创建message
-        // 获得方法，通过反射的
-        const google::protobuf::ServiceDescriptor* sd = method->service();
-        std::string service_name = sd->name();
-        std::string method_name = method->name();
+    // 1. proto拿到服务描述,描述能调用Message Factoryc创建message
+    // 获得方法，通过反射的
+    const google::protobuf::ServiceDescriptor* sd = method->service();
+    std::string service_name = sd->name();
+    std::string method_name = method->name();
 
-        // 2. 序列化
-        // 从request中序列化到string
-        std::string args_str;
-        if(!request->SerializeToString(&args_str))
-        {
-            controller->SetFailed("serialize request error!");
-            return;
-        }
+    // 2. 序列化
+    // 从request中序列化到string
+    std::string args_str;
+    if(!request->SerializeToString(&args_str))
+    {
+        controller->SetFailed("serialize request error!");
+        return;
+    }
 
-        // proto生成了rpcHeader（自己设置的），拿出来设置参数
-        RPC::RpcHeader _rpcHeader;
-        _rpcHeader.set_service_name(service_name);
-        _rpcHeader.set_method_name(method_name);
-        _rpcHeader.set_args_size(args_str.size());
+    // proto生成了rpcHeader（自己设置的），拿出来设置参数
+    RPC::RpcHeader _rpcHeader;
+    _rpcHeader.set_service_name(service_name);
+    _rpcHeader.set_method_name(method_name);
+    _rpcHeader.set_args_size(args_str.size());
 
-        std::string rpc_header_str;
-        if (!_rpcHeader.SerializeToString(&rpc_header_str)) 
-        {
-            controller->SetFailed("serialize rpc header error!");
-            return;
-        }
+    std::string rpc_header_str;
+    if (!_rpcHeader.SerializeToString(&rpc_header_str)) 
+    {
+        controller->SetFailed("serialize rpc header error!");
+        return;
+    }
 
-        // 使用protobuf的CodedOutputStream来构建发送的数据流
-        std::string send_rpc_str;
+    // 使用protobuf的CodedOutputStream来构建发送的数据流
+    std::string send_rpc_str;
+    {
         google::protobuf::io::StringOutputStream string_output(&send_rpc_str);
         google::protobuf::io::CodedOutputStream coded_output(&string_output);
 
@@ -122,52 +126,52 @@ void RpcChannel::CallMethod(const google::protobuf::MethodDescriptor *method,
         coded_output.WriteVarint32(static_cast<uint32_t>(rpc_header_str.size()));
 
         coded_output.WriteString(rpc_header_str);
+    }
+    
 
-        send_rpc_str += rpc_header_str;
-
-
-        // 发送网络信息
-        // 发送失败会一直连接 + 发送
-        while(-1 == send(m_clientFd, send_rpc_str.c_str(), send_rpc_str.size(), 0))
-        {
-            char errtxt[512] = {0};
-            sprintf(errtxt, "send error! errno:%d", errno);
-            std::cout << "尝试重新连接，对方ip：" << m_ip << " 对方端口" << m_port << std::endl;
-            close(m_clientFd);
-            m_clientFd = -1;
-            std::string errMsg;
-            bool rt = newConnect(m_ip.c_str(), m_port, errMsg);
-            if (!rt) {
-            controller->SetFailed(errMsg);
-            return;
-            } 
-        }
+    send_rpc_str += args_str;
 
 
-        // 3. 接收数据
-        // 发送之后服务端就处理rpc请求了，请求之后循环接收
-        char recv_buf[1024] = {0};
-        int recv_size = 0;
+    // 发送网络信息
+    // 发送失败会一直连接 + 发送
+    while(-1 == send(m_clientFd, send_rpc_str.c_str(), send_rpc_str.size(), 0))
+    {
+        char errtxt[512] = {0};
+        sprintf(errtxt, "send error! errno:%d", errno);
+        std::cout << "尝试重新连接，对方ip：" << m_ip << " 对方端口" << m_port << std::endl;
+        close(m_clientFd);
+        m_clientFd = -1;
+        std::string errMsg;
+        bool rt = newConnect(m_ip.c_str(), m_port, errMsg);
+        if (!rt) {
+        controller->SetFailed(errMsg);
+        return;
+        } 
+    }
 
-        if(-1 == (recv_size = recv(m_clientFd, recv_buf, sizeof(recv_buf), 0)))
-        {
-            close(m_clientFd);
-            m_clientFd = -1;
-            char errtxt[512] = {0};
-            sprintf(errtxt, "recv error! errno:%d", errno);
-            controller->SetFailed(errtxt);
-            return;
-        }
 
-        // 4. 反序列化到response
-        if(!response->ParseFromArray(recv_buf, recv_size))
-        {
-            char errtxt[1050] = {0};
-            sprintf(errtxt, "parse error! response_str:%s", recv_buf);
-            controller->SetFailed(errtxt);
-            return;
-        }
+    // 3. 接收数据
+    // 发送之后服务端就处理rpc请求了，请求之后循环接收
+    char recv_buf[1024] = {0};
+    int recv_size = 0;
 
+    if(-1 == (recv_size = recv(m_clientFd, recv_buf, sizeof(recv_buf), 0)))
+    {
+        close(m_clientFd);
+        m_clientFd = -1;
+        char errtxt[512] = {0};
+        sprintf(errtxt, "recv error! errno:%d", errno);
+        controller->SetFailed(errtxt);
+        return;
+    }
+
+    // 4. 反序列化到response
+    if(!response->ParseFromArray(recv_buf, recv_size))
+    {
+        char errtxt[1050] = {0};
+        sprintf(errtxt, "parse error! response_str:%s", recv_buf);
+        controller->SetFailed(errtxt);
+        return;
     }
 }
 

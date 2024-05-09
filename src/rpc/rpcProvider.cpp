@@ -72,6 +72,7 @@ void RpcProvider::Run(int nodeIndex, short port)
     // node1ip=xxxxx node1port=xxxx
     outfile << node + "ip=" + ip << std::endl;
     outfile << node + "port=" + std::to_string(port) << std::endl;
+    outfile.close();
 
 
     // 3. 启动server

@@ -1,5 +1,5 @@
 # 设置最低版本
-cmake_minimum_required(VERSION 3.25)
+cmake_minimum_required(VERSION 3.22)
 project(raftKV) # 项目名
 
 
@@ -16,6 +16,11 @@ include_directories(${PROJECT_SOURCE_DIR}/src/common/include)
 include_directories(${PROJECT_SOURCE_DIR}/src/rpc/include)
 include_directories(${PROJECT_SOURCE_DIR}/src/skipList/include)
 include_directories(${PROJECT_SOURCE_DIR}/test_cases)
+# include_directories(${PROJECT_SOURCE_DIR}/src/raftCore/include)
+# include_directories(${PROJECT_SOURCE_DIR}/src/raftRpcProto/include)
+# include_directories(${PROJECT_SOURCE_DIR}/src/raftClerk/include)
+
+
 
 # 设置项目库文件搜索路径 -L（每个编译出来之后，依赖都在前一个编译的lib找，所以上面要有顺序）
 link_directories(${PROJECT_SOURCE_DIR}/lib)
@@ -25,6 +30,6 @@ add_subdirectory(src)
 add_subdirectory(test_cases)
 
 # 依赖的子目录的编译lib，起一个名称
-add_library(raft STATIC ${src_rpc} ${src_test_rpc})
+add_library(raft STATIC ${src_rpc} ${test_rpc}) #  ${src_raftCore} ${src_raftRpcProto} ${src_raftClerk})
 # 链接的外部库/usr/local/lib, dl是链接库，一定要依赖
 target_link_libraries(raft muduo_net muduo_base pthread dl)
