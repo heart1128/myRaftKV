@@ -2,7 +2,7 @@
  * @Author: heart1128 1020273485@qq.com
  * @Date: 2024-05-04 20:50:15
  * @LastEditors: heart1128 1020273485@qq.com
- * @LastEditTime: 2024-05-09 11:35:05
+ * @LastEditTime: 2024-05-09 14:20:46
  * @FilePath: /myRaftKv/src/raftCore/kvServer.cpp
  * @Description:
  */
@@ -179,7 +179,7 @@ void KvServer::Get(google::protobuf::RpcController *controller, const ::raftKVRp
 /// @param args
 /// @param reply
 void KvServer::Get(const raftKVRpcProctoc::GetArgs *args, raftKVRpcProctoc::GetReply *reply)
-{
+{ 
     Op op;                                              // 这个op是请求的op，只有key
     op.m_message.Operation = "Get";
     op.m_message.Key = args->key();
