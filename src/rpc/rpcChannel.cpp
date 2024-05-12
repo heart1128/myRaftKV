@@ -2,7 +2,7 @@
  * @Author: heart1128 1020273485@qq.com
  * @Date: 2024-04-30 18:19:16
  * @LastEditors: heart1128 1020273485@qq.com
- * @LastEditTime: 2024-05-09 21:29:31
+ * @LastEditTime: 2024-05-12 16:07:12
  * @FilePath: /myRaftKv/src/rpc/rpcChannel.cpp
  * @Description: 
  */
@@ -131,10 +131,12 @@ void RpcChannel::CallMethod(const google::protobuf::MethodDescriptor *method,
 
     send_rpc_str += args_str;
 
-
+    //std::cout << __FILE__ << ":" << __LINE__ << "\tclient准备发送的长度：" << send_rpc_str.size() << std::endl;
+    
     // 发送网络信息
     // 发送失败会一直连接 + 发送
-    while(-1 == send(m_clientFd, send_rpc_str.c_str(), send_rpc_str.size(), 0))
+    int send_len = 0;
+    while(-1 == (send_len = send(m_clientFd, send_rpc_str.c_str(), send_rpc_str.size(), 0)))
     {
         char errtxt[512] = {0};
         sprintf(errtxt, "send error! errno:%d", errno);
@@ -148,6 +150,7 @@ void RpcChannel::CallMethod(const google::protobuf::MethodDescriptor *method,
         return;
         } 
     }
+    //std::cout << __FILE__ << ":" << __LINE__ << "\tclient已经发送的长度：" << send_len << std::endl;
 
 
     // 3. 接收数据
@@ -164,6 +167,7 @@ void RpcChannel::CallMethod(const google::protobuf::MethodDescriptor *method,
         controller->SetFailed(errtxt);
         return;
     }
+     //std::cout << __FILE__ << ":" << __LINE__<< "\tclient接收长度：" << recv_size << std::endl;
 
     // 4. 反序列化到response
     if(!response->ParseFromArray(recv_buf, recv_size))

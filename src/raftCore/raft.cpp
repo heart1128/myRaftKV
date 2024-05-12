@@ -77,6 +77,7 @@ void Raft::electionTimeOutTicker()
         while(m_status == LEADER)
         {
             // usleep不会完全让出cpu，要是协程不让出就直接阻塞了
+            // std::cout <<  __LINE__ << "  electionTimeOutTicker():不是leader 睡眠" << HeartBeatTimeout << "us" << std::endl;
             usleep(HeartBeatTimeout); // 超时选举时间一般比心跳时间长，所以每次心跳唤醒看看
         }
 
@@ -108,6 +109,7 @@ void Raft::electionTimeOutTicker()
             std::chrono::duration<double, std::milli> duration = end - start;
 
             // 使用ANSI控制序列将输出颜色修改为紫色
+            std::cout << "\033[1;35m 当前pid =  " << getpid()  << "tid = " << gettid() << std::endl;
             std::cout << "\033[1;35m electionTimeOutTicker();函数设置睡眠时间为: "
                         << std::chrono::duration_cast<std::chrono::milliseconds>(suitableSleepTime).count() << " 毫秒\033[0m"
                         << std::endl;
@@ -143,7 +145,7 @@ void Raft::doElection()
     if(m_status == LEADER)  // leader不能选举
         return;
 
-    DPrintf("[       ticker-func-rf(%d)              ]  选举定时器到期且不是leader，开始选举 \n", m_me);
+    DPrintf("[  进程：%d线程：%d   ticker-func-rf(%d)              ]  选举定时器到期且不是leader，开始选举 \n",getppid() ,gettid(),m_me);
 
     m_status = CANDIDATE;    // 改变状态
 
@@ -156,6 +158,11 @@ void Raft::doElection()
     std::shared_ptr<int> votedCnt = std::make_shared<int>(1); // 1票是自己投的，投票计数
     m_lastResetElectionTime = now(); // 设置下最后超时时间，防止再次判断调用选举函数
 
+    // fixbug : 这里开始m_peers.size() == 0出问题了，应该加一个判断是不是网络分区了
+    if(m_peers.size() == 0)
+    {
+        std::cout << __LINE__ << "doElection() 当前网络分区为1，没有其他节点" << std::endl;
+    }
     //  开始发送requestVote rpc请求, 除自己之外的所有server
     for(int i = 0; i < m_peers.size(); ++i)
     {
@@ -192,9 +199,9 @@ bool Raft::sendRequestVote(int server, std::shared_ptr<raftRpcProtocol::RequestV
 {
     // 1. 先发送，保证发送不保证送达
     auto start = now();
-    DPrintf("[func-sendRequestVote rf{%d}] 向server{%d} 发送 RequestVote 开始", m_me, m_currentTerm, getLastLogIndex());
+    DPrintf("[func-sendRequestVote rf{%d}] 向server{%d} 发送 RequestVote 开始", m_me, server, getLastLogIndex());
     bool ok = m_peers[server]->RequestVote(args.get(), reply.get());   // 调用raftRpcUtil的requestVote函数进行rpc通信
-    DPrintf("[func-sendRequestVote rf{%d}] 向server{%d} 发送 RequestVote 完毕，耗时:{%d} ms", m_me, m_currentTerm,
+    DPrintf("[func-sendRequestVote rf{%d}] 向server{%d} 发送 RequestVote 完毕，耗时:{%d} ms", m_me, server,
           getLastLogIndex(), now() - start);
 
     if(!ok)
@@ -441,7 +448,7 @@ void Raft::doHeartBeat()
             // 1.1 log更新的情况，这时候就要找上次同步的log index， 发送[perLogIndex, ]的log
             int prevLogIndex = -1;
             int prevLogTerm = -1;
-            getPrevLogInfo(i, &prevLogIndex, &prevLogIndex);
+            getPrevLogInfo(i, &prevLogIndex, &prevLogTerm);
 
 /// TODO 为什么这个要用智能指针包裹？---> 因为protobuf中有嵌套类型，内部就会申请内存，但是要手动释放(delete)
 ///     使用protobuf的clear()只是把数组初始化为0，不会释放内存，和stl不同
@@ -509,7 +516,7 @@ bool Raft::sendAppendEntries(int server, std::shared_ptr<raftRpcProtocol::Append
     DPrintf("[func-Raft::sendAppendEntries-raft{%d}] leader 向节点{%d}发送AE rpc開始 ， args->entries_size():{%d}", m_me,
           server, args->entries_size());
 
-
+    std::cout << "*****(********)当前leader的term = " << args->term() << std::endl;
     bool ok = m_peers[server]->AppendEntries(args.get(), reply.get());
 
     if (!ok)
@@ -519,7 +526,7 @@ bool Raft::sendAppendEntries(int server, std::shared_ptr<raftRpcProtocol::Append
     }
     DPrintf("[func-Raft::sendAppendEntries-raft{%d}] leader 向节点{%d}发送AE rpc成功", m_me, server);
     if (reply->appstate() == Disconnected)          // 节点状态是失败的
-    {
+    { 
         return ok;
     }
 
@@ -554,7 +561,9 @@ bool Raft::sendAppendEntries(int server, std::shared_ptr<raftRpcProtocol::Append
 
         if(!reply->success())                       // 更新失败，说明日志不匹配，前几次同步的log出问题了
         {
-            if(reply->updatenextindex() != 100)     // 这是follower失败设定的默认值
+            DPrintf("返回的有问题：prevLogIndex = %d, reply_index = %d\n", args->prevlogindex(), reply->updatenextindex());
+            DPrintf("term = %d, reply term = %d", args->term(), reply->term());
+            if(reply->updatenextindex() != -100)     // 这是follower失败设定的默认值
             {
                 DPrintf("[func -sendAppendEntries  rf{%d}]  返回的日志term相等，但是不匹配，回缩nextIndex[%d]：{%d}\n", m_me,
                         server, reply->updatenextindex());
@@ -735,9 +744,12 @@ void Raft::AppendEntries1(const raftRpcProtocol::AppendEntriesArgs *args, raftRp
 
     if(args->prevlogindex() > getLastLogIndex())                // 第一种情况
     {
+        
         reply->set_success(false);
         reply->set_term(m_currentTerm);
         reply->set_updatenextindex(getLastLogIndex() + 1);      // 这里发送follower当前的更新进度+1,+1是请求下一个，leader收到就会更新nextIndex[i]
+        DPrintf("prevlogindex = %d, getLastLogIndex = %d, 日志太老，%d拒绝了%d\n", 
+            args->prevlogindex(), getLastLogIndex(), m_me, args->leaderid());
         return;
     }
     else if(args->prevlogindex() < m_lastSnapshotIncludeIndex)  // 第二种情况
@@ -745,6 +757,8 @@ void Raft::AppendEntries1(const raftRpcProtocol::AppendEntriesArgs *args, raftRp
         reply->set_success(false);
         reply->set_term(m_currentTerm);
         reply->set_updatenextindex(m_lastSnapshotIncludeIndex + 1);// 让leader跟上快照
+        DPrintf("prevlogindex = %d, getLastLogIndex = %d, 包含在snapshot中，%d拒绝了%d\n", 
+            args->prevlogindex(), getLastLogIndex(), m_me, args->leaderid());
     }
 
 
@@ -809,6 +823,7 @@ void Raft::AppendEntries1(const raftRpcProtocol::AppendEntriesArgs *args, raftRp
             }
         }
 
+        DPrintf("任期不同 \n");
         reply->set_success(false);           // 不同任期肯定失败
         reply->set_term(m_currentTerm);
         return;
@@ -1243,6 +1258,7 @@ bool Raft::matchLog(int logIndex, int logTerm)
     myAssert(logIndex >= m_lastSnapshotIncludeIndex && logIndex <= getLastLogIndex(),
            format("不满足：logIndex{%d}>=rf.lastSnapshotIncludeIndex{%d}&&logIndex{%d}<=rf.getLastLogIndex{%d}",
                   logIndex, m_lastSnapshotIncludeIndex, logIndex, getLastLogIndex()));
+    DPrintf("logTerm = %d, getLogTermFromLogIndex() = %d", logTerm, getLogTermFromLogIndex(logIndex));
     return logTerm == getLogTermFromLogIndex(logIndex);
 }
 

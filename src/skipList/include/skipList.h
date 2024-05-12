@@ -2,7 +2,7 @@
  * @Author: heart1128 1020273485@qq.com
  * @Date: 2024-05-04 14:35:11
  * @LastEditors: heart1128 1020273485@qq.com
- * @LastEditTime: 2024-05-08 20:46:02
+ * @LastEditTime: 2024-05-11 18:01:56
  * @FilePath: /myRaftKv/src/skipList/include/skipList.h
  * @Description:
  */
@@ -110,8 +110,8 @@ public:
 template <typename K, typename V>
 inline void SkipListDump<K, V>::insert(const SkipListNode<K, V> &node)
 {
-    m_keyDump.emplace_back(node->getKey());
-    m_valueDump.emplace_back(node->getValue());
+    m_keyDump.emplace_back(node.getKey());
+    m_valueDump.emplace_back(node.getValue());
 }
 
 template <typename K, typename V>
@@ -121,8 +121,10 @@ inline void SkipListDump<K, V>::serializeToString(std::string &data)
                         std::make_shared<SkipListDumpSerialization::KVDump>();
     for(int i = 0; i < m_keyDump.size(); ++i)
     {
-        kvDump->mutable_key()->Add(m_keyDump[i]);
-        kvDump->mutable_value()->Add(m_valueDump[i]);
+        // kvDump->mutable_key()->Add(m_keyDump[i]);        // 加入可变引用，如果这里用右值放入就会报错
+        // kvDump->mutable_value()->Add(m_valueDump[i]);
+        kvDump->add_key(m_keyDump[i]);
+        kvDump->add_value(m_valueDump[i]);
     }
 
     if(!kvDump->SerializeToString(&data))
@@ -392,7 +394,7 @@ inline bool SkipList<K, V>::searchElement(K key, V &value)
     if(current and current->getKey() == key)
     {
         value = current->getValue();
-        std::cout << "Found key: " << key << ", value: " << current->get_value() << std::endl;
+        std::cout << "Found key: " << key << ", value: " << current->getValue() << std::endl;
         return true;
     }
 

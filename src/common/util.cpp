@@ -2,7 +2,7 @@
  * @Author: heart1128 1020273485@qq.com
  * @Date: 2024-04-30 18:43:36
  * @LastEditors: heart1128 1020273485@qq.com
- * @LastEditTime: 2024-05-04 18:04:07
+ * @LastEditTime: 2024-05-11 21:38:55
  * @FilePath: /myRaftKv/src/common/util.cpp
  * @Description: 
  */
@@ -15,6 +15,7 @@
 #include <functional>
 #include <mutex>
 #include <chrono>
+#include <unistd.h>
 
 
 void sleepNMilliseconds(int N) 
@@ -36,6 +37,8 @@ std::chrono::_V2::system_clock::time_point now()
 {
     return std::chrono::high_resolution_clock::now();
 }
+
+
 
 /***********************************************************/
 /**                    自定义断言                       **/

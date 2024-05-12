@@ -1,5 +1,5 @@
 # 设置最低版本
-cmake_minimum_required(VERSION 3.22)
+cmake_minimum_required(VERSION 3.25)
 project(raftKV) # 项目名
 
 
@@ -14,12 +14,11 @@ set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 # 设置头文件（是头文件）搜索路径，也就是g++ 的-I
 include_directories(${PROJECT_SOURCE_DIR}/src/common/include)
 include_directories(${PROJECT_SOURCE_DIR}/src/rpc/include)
-include_directories(${PROJECT_SOURCE_DIR}/src/skipList/include)
 include_directories(${PROJECT_SOURCE_DIR}/test_cases)
-# include_directories(${PROJECT_SOURCE_DIR}/src/raftCore/include)
-# include_directories(${PROJECT_SOURCE_DIR}/src/raftRpcProto/include)
-# include_directories(${PROJECT_SOURCE_DIR}/src/raftClerk/include)
-
+include_directories(${PROJECT_SOURCE_DIR}/src/raftCore/include)
+include_directories(${PROJECT_SOURCE_DIR}/src/raftRpcProto/include)
+include_directories(${PROJECT_SOURCE_DIR}/src/raftClerk/include)
+include_directories(${PROJECT_SOURCE_DIR}/src/skipList/include)
 
 
 # 设置项目库文件搜索路径 -L（每个编译出来之后，依赖都在前一个编译的lib找，所以上面要有顺序）
@@ -30,6 +29,7 @@ add_subdirectory(src)
 add_subdirectory(test_cases)
 
 # 依赖的子目录的编译lib，起一个名称
-add_library(raft STATIC ${src_rpc} ${test_rpc}) #  ${src_raftCore} ${src_raftRpcProto} ${src_raftClerk})
+# 添加一个静态库raft，依赖后面的源文件
+add_library(raft STATIC ${src_rpc} ${test_rpc} ${src_skipList} ${src_raftCore} ${src_raftRpcProto} ${src_raftClerk})
 # 链接的外部库/usr/local/lib, dl是链接库，一定要依赖
 target_link_libraries(raft muduo_net muduo_base pthread dl)

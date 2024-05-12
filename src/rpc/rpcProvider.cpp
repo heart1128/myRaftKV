@@ -76,6 +76,7 @@ void RpcProvider::Run(int nodeIndex, short port)
 
 
     // 3. 启动server
+    DPrintf("当前进程: %d, 当前线程：%d, server启动在 ip = %s, port = %d", getpid(), gettid() ,ip.c_str(), port);
     muduo::net::InetAddress address(ip, port);
 
     m_ptr_muduo_server = std::make_shared<muduo::net::TcpServer>(&eventLoop, address, "RpcProvider");
@@ -117,6 +118,7 @@ void RpcProvider::OnConnection(const muduo::net::TcpConnectionPtr &conn)
 /// @param  
 void RpcProvider::OnMessage(const muduo::net::TcpConnectionPtr &conn, muduo::net::Buffer *buffer, muduo::Timestamp)
 {
+    std::cout << __LINE__ << "server接收到的数据长度 : " << buffer->readableBytes() << std::endl;
     std::string recv_buf = buffer->retrieveAllAsString(); // 读取所有内容，刷新buffer
 
     // // 使用protobuf的CodedInputStream来解析数据流
@@ -220,6 +222,7 @@ void RpcProvider::SendRpcResponse(const muduo::net::TcpConnectionPtr &conn, goog
     // 序列化到string发送
     if(response->SerializeToString(&response_str))
     {
+        std::cout << __LINE__ << "server发送长度：" << response_str.size() << std::endl;
         conn->send(response_str); // 直接发送
     }
     else // 序列化失败

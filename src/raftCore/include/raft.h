@@ -2,7 +2,7 @@
  * @Author: heart1128 1020273485@qq.com
  * @Date: 2024-05-02 14:25:12
  * @LastEditors: heart1128 1020273485@qq.com
- * @LastEditTime: 2024-05-08 20:19:04
+ * @LastEditTime: 2024-05-11 17:18:33
  * @FilePath: /myRaftKv/src/raftCore/include/raft.h
  * @Description:
  */
@@ -56,7 +56,7 @@ public:
 private:
     /*************          辅助变量          ********************/
     std::mutex m_mutex;
-    muduo::net::EventLoop m_eventLoop;  // 替代了usleep。使用了内部的timefd事件代替
+    // muduo::net::EventLoop m_eventLoop;  // 替代了usleep。使用了内部的timefd事件代替
     // 协程还未实现
     // std::unique_ptr<monsoon::IOManager> m_ioManager = nullptr;
 
